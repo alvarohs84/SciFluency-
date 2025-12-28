@@ -206,7 +206,27 @@ function reveal(el, word) {
 {% elif mode == 'hub' %}
 <div class="container"><h3 style="text-align:center;">Research Hub</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">{% for link in links %}<div class="card hub-card" onclick="window.open('{{link.url}}','_blank')"><div style="font-size:2.5rem;">{{link.icon}}</div><b>{{link.name}}</b><br><small>{{link.desc}}</small></div>{% endfor %}</div></div>
 {% elif mode == 'phrases' %}
-<div class="container"><h3>Phrasebank</h3>{% for sec, phrases in phrases.items() %}<div class="card"><div class="section-header">{{sec}}</div>{% for p in phrases %}<div style="margin-bottom:10px;"><b onclick="speak(this.innerText)">{{p.en}} 🔊</b><br><small>{{p.pt}}</small></div>{% endfor %}</div>{% endfor %}</div>
+<div class="container">
+    <h3>Phrasebank</h3>
+    <p style="font-size:0.9rem; color:var(--subtext);">Tap any phrase to listen and practice (Karaoke enabled).</p>
+    
+    {% for sec, list_phrases in phrases.items() %}
+    <div class="card">
+        <div class="section-header" style="background:#eef2f3; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold; color:var(--accent);">
+            {{sec}}
+        </div>
+        {% for p in list_phrases %}
+        <div class="sentence-block" onclick="prepare(this, '{{p.en}}')">
+            {% for w in p.en.split() %}
+            <span class="k-sent">{{w}}</span> 
+            {% endfor %}
+            <br>
+            <small style="color:var(--subtext); font-style:italic;">{{p.pt}}</small>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
 {% elif mode == 'miner_home' %}
 <div class="container"><form action="/miner" method="POST" enctype="multipart/form-data"><div class="card"><h3>⛏️ Data Miner</h3><label style="display:block;margin-bottom:10px;color:var(--subtext);">Suporta: PDF, TXT, RIS, NBIB</label><input type="file" name="arquivo_upload" multiple accept=".pdf,.txt,.ris,.nbib"><textarea name="texto_full" style="height:100px;margin-top:10px;" placeholder="Ou cole o texto aqui..."></textarea><button class="btn" style="width:100%">EXTRACT</button></div></form></div>
 {% elif mode == 'miner_res' %}

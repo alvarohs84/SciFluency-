@@ -21,7 +21,7 @@ import utils
 
 app = Flask(__name__)
 
-# Configuração do Banco de Dados (Neon/Postgres ou SQLite local)
+# Configuração do Banco de Dados
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///scifluency.db')
 if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
@@ -32,7 +32,7 @@ APP_NAME = "SciFluency"
 
 db.init_app(app)
 
-# --- LINKS DO RESEARCH HUB (ATUALIZADO) ---
+# --- LINKS DO RESEARCH HUB ---
 RESEARCH_LINKS = [
     {"name": "PubMed", "url": "https://pubmed.ncbi.nlm.nih.gov/", "icon": "🧬", "desc": "Biomedical Literature"},
     {"name": "SciELO", "url": "https://scielo.org/", "icon": "🌎", "desc": "Open Access Journals"},
@@ -42,7 +42,58 @@ RESEARCH_LINKS = [
     {"name": "Web of Science", "url": "https://www.webofscience.com/", "icon": "🕸️", "desc": "Scientific Citation Index"}
 ]
 
-# --- FUNÇÕES DE APOIO AO BANCO ---
+# --- BANCO DE FRASES ACADÊMICAS (O RECHEIO) ---
+ACADEMIC_PHRASEBANK = {
+    "1. Introduction & Context": [
+        {"en": "Recent developments in this field have heightened the need for...", "pt": "Desenvolvimentos recentes neste campo aumentaram a necessidade de..."},
+        {"en": "Currently, there is a paucity of data regarding...", "pt": "Atualmente, há escassez de dados sobre..."},
+        {"en": "This study aims to investigate the relationship between...", "pt": "Este estudo visa investigar a relação entre..."},
+        {"en": "Previous research has established that...", "pt": "Pesquisas anteriores estabeleceram que..."},
+        {"en": "However, these results remain controversial.", "pt": "No entanto, esses resultados permanecem controversos."},
+        {"en": "The primary objective of this paper is to evaluate...", "pt": "O objetivo principal deste artigo é avaliar..."},
+        {"en": "Understanding the mechanisms underlying this phenomenon is crucial.", "pt": "Compreender os mecanismos subjacentes a este fenômeno é crucial."},
+        {"en": "Little is known about the effects of...", "pt": "Pouco se sabe sobre os efeitos de..."}
+    ],
+    "2. Methods & Materials": [
+        {"en": "Data were collected using a semi-structured interview guide.", "pt": "Os dados foram coletados usando um roteiro de entrevista semiestruturado."},
+        {"en": "The participants were divided into two groups.", "pt": "Os participantes foram divididos em dois grupos."},
+        {"en": "Statistical analysis was performed using SPSS software.", "pt": "A análise estatística foi realizada usando o software SPSS."},
+        {"en": "We excluded patients with a history of...", "pt": "Excluímos pacientes com histórico de..."},
+        {"en": "Samples were obtained from...", "pt": "As amostras foram obtidas de..."},
+        {"en": "The experiment was conducted in triplicate.", "pt": "O experimento foi conduzido em triplicata."},
+        {"en": "To adjust for potential confounders, we used...", "pt": "Para ajustar potenciais confundidores, usamos..."},
+        {"en": "All subjects provided informed consent.", "pt": "Todos os sujeitos forneceram consentimento informado."}
+    ],
+    "3. Results & Findings": [
+        {"en": "There was a significant correlation between...", "pt": "Houve uma correlação significativa entre..."},
+        {"en": "Table 1 presents the demographic characteristics of the sample.", "pt": "A Tabela 1 apresenta as características demográficas da amostra."},
+        {"en": "Contrary to expectations, we did not find...", "pt": "Contrário às expectativas, não encontramos..."},
+        {"en": "The results indicate that...", "pt": "Os resultados indicam que..."},
+        {"en": "Interestingly, no significant difference was observed.", "pt": "Curiosamente, nenhuma diferença significativa foi observada."},
+        {"en": "Figure 2 illustrates the breakdown of...", "pt": "A Figura 2 ilustra a distribuição de..."},
+        {"en": "Our findings are consistent with those of previous studies.", "pt": "Nossos achados são consistentes com os de estudos anteriores."},
+        {"en": "A clear trend was identified regarding...", "pt": "Uma tendência clara foi identificada em relação a..."}
+    ],
+    "4. Discussion & Argumentation": [
+        {"en": "These findings suggest that...", "pt": "Esses achados sugerem que..."},
+        {"en": "One possible explanation for this result is...", "pt": "Uma possível explicação para este resultado é..."},
+        {"en": "This study provides new insights into...", "pt": "Este estudo fornece novos insights sobre..."},
+        {"en": "However, some limitations should be noted.", "pt": "No entanto, algumas limitações devem ser notadas."},
+        {"en": "Our results challenge the widely held view that...", "pt": "Nossos resultados desafiam a visão amplamente aceita de que..."},
+        {"en": "It is plausible to assume that...", "pt": "É plausível assumir que..."},
+        {"en": "Further research is needed to confirm these findings.", "pt": "Mais pesquisas são necessárias para confirmar esses achados."},
+        {"en": "The implications of this study are twofold.", "pt": "As implicações deste estudo são duplas."}
+    ],
+    "5. Conclusion": [
+        {"en": "In conclusion, this study demonstrates that...", "pt": "Em conclusão, este estudo demonstra que..."},
+        {"en": "The evidence from this study suggests...", "pt": "As evidências deste estudo sugerem..."},
+        {"en": "Ideally, future studies should address...", "pt": "Idealmente, estudos futuros devem abordar..."},
+        {"en": "Overall, these results highlight the importance of...", "pt": "No geral, esses resultados destacam a importância de..."},
+        {"en": "We recommend that...", "pt": "Recomendamos que..."}
+    ]
+}
+
+# --- FUNÇÕES DE APOIO ---
 def log_activity(points):
     today = datetime.now().strftime('%Y-%m-%d')
     log = StudyLog.query.filter_by(date=today).first()
@@ -128,7 +179,9 @@ def systems():
     return render_template('layout.html', mode='systems', analysis=analysis, app_name=APP_NAME)
 
 @app.route('/phrases')
-def phrases(): return render_template('layout.html', mode='phrases', phrases={}, app_name=APP_NAME)
+def phrases(): 
+    # Passamos o banco de frases aqui
+    return render_template('layout.html', mode='phrases', phrases=ACADEMIC_PHRASEBANK, app_name=APP_NAME)
 
 @app.route('/miner', methods=['GET', 'POST'])
 def miner():
@@ -377,7 +430,6 @@ def traduzir_palavra(): return jsonify({"t": GoogleTranslator(source='en', targe
 @app.route('/novo')
 def novo(): return render_template('layout.html', mode='new', app_name=APP_NAME)
 
-# --- ROTA PODCAST BILÍNGUE (MANTIDA) ---
 @app.route('/podcast/<id>')
 def podcast(id):
     story = Story.query.get(id)
@@ -385,34 +437,23 @@ def podcast(id):
     
     try:
         full_audio = BytesIO()
-        
-        # 1. Introdução
         intro_text = f"SciFluency Bilingual Audio. {story.title}."
         tts_intro = gTTS(text=intro_text, lang='en', tld='com')
         tts_intro.write_to_fp(full_audio)
         
-        # 2. Loop frases
         count = 0
         for s in story.sentences:
             if count > 20: break 
-            
             if s.en and s.pt:
-                # Inglês
                 tts_en = gTTS(text=s.en, lang='en', tld='com')
                 tts_en.write_to_fp(full_audio)
-                
-                # Português
                 tts_pt = gTTS(text=s.pt, lang='pt', tld='com.br')
                 tts_pt.write_to_fp(full_audio)
-                
                 time.sleep(0.3)
-                
             count += 1
             
-        # 3. Fim
         tts_end = gTTS(text="End of session.", lang='en')
         tts_end.write_to_fp(full_audio)
-
         full_audio.seek(0)
         return send_file(full_audio, mimetype='audio/mpeg', as_attachment=True, download_name=f'bilingual_{id}.mp3')
 
