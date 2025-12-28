@@ -3,6 +3,8 @@ import json
 import csv
 import uuid
 import re
+import random  # <--- CORREÇÃO: O import que faltava!
+import time
 from io import BytesIO, StringIO, TextIOWrapper
 from datetime import datetime, timedelta
 
@@ -13,11 +15,13 @@ from Bio import Entrez
 from deep_translator import GoogleTranslator
 from pypdf import PdfReader
 
-# Nossas importações locais
+# --- IMPORTAÇÕES LOCAIS ---
 from models import db, Deck, Card, Story, Sentence, StudyLog
 import utils
 
 app = Flask(__name__)
+
+# Configuração do Banco de Dados (Neon/Postgres ou SQLite local)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///scifluency.db')
 if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
@@ -28,13 +32,14 @@ APP_NAME = "SciFluency"
 
 db.init_app(app)
 
-# Variáveis globais para templates (agora passadas via context processor ou direto na rota)
+# Links globais para o template
 RESEARCH_LINKS = [
     {"name": "PubMed", "url": "https://pubmed.ncbi.nlm.nih.gov/", "icon": "🧬", "desc": "Biomedical Literature"},
     {"name": "SciELO", "url": "https://scielo.org/", "icon": "🌎", "desc": "Open Access Journals"},
     {"name": "Google Scholar", "url": "https://scholar.google.com.br/", "icon": "🎓", "desc": "Academic Search"}
 ]
 
+# --- FUNÇÕES DE APOIO AO BANCO ---
 def log_activity(points):
     today = datetime.now().strftime('%Y-%m-%d')
     log = StudyLog.query.filter_by(date=today).first()
@@ -59,6 +64,7 @@ def check_and_migrate_db():
                     conn.commit()
     except Exception as e: print(f"Migration warning: {e}")
 
+# --- ROTAS ---
 @app.route('/')
 def index():
     main_deck = Deck.query.get("my_vocab")
@@ -80,7 +86,8 @@ def index():
         if count > 15: color = "var(--heat-3)"
         heatmap.append({"date": d_date, "count": count, "color": color, "day": d_date[-2:]})
     stats = {"total": total_cards, "mastered": mastered_cards, "heatmap": heatmap}
-    return render_template('layout.html', mode='list', stories=Story.query.all(), decks=[deck_data], stats=stats, app_name=APP_NAME)
+    # Passamos RESEARCH_LINKS aqui caso o layout precise em algum menu global
+    return render_template('layout.html', mode='list', stories=Story.query.all(), decks=[deck_data], stats=stats, app_name=APP_NAME, links=RESEARCH_LINKS)
 
 @app.route('/reset_decks')
 def reset_decks():
@@ -177,7 +184,7 @@ def summarizer():
                 formatted_html = utils.format_abstract_smart(art['abstract'])
                 clean_text_for_api = re.sub(r'<.*?>', ' ', formatted_html)
                 try:
-                    import time; time.sleep(0.5)
+                    time.sleep(0.5)
                     translation = GoogleTranslator(source='en', target='pt').translate(clean_text_for_api[:4500])
                 except: translation = "Tradução indisponível."
                 batch_results.append({
@@ -285,7 +292,7 @@ def jogar(id):
     due = Card.query.filter(Card.deck_id == target_deck, Card.next_review <= datetime.now().strftime('%Y-%m-%d')).all()
     card_data = None
     if due:
-        c = random.choice(due)
+        c = random.choice(due) # random agora está importado e vai funcionar!
         cloze_parts = re.split(r'\[(.*?)\]', c.front) 
         is_cloze = len(cloze_parts) > 1
         card_data = {"id": c.id, "front": c.front, "back": c.back, "ipa": c.ipa, "context": c.context, "is_cloze": is_cloze, "cloze_hint": (cloze_parts[0] + "_____" + cloze_parts[2]) if is_cloze else ""}
