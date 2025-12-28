@@ -16,7 +16,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bot
 .sidebar a span{display:block;font-size:0.8rem;color:var(--subtext);margin-top:2px;}
 .card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:16px;border:1px solid var(--border);box-shadow:0 4px 10px var(--shadow);}
 .btn{background:var(--accent);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-weight:bold;cursor:pointer;}
-.sentence-block{padding:18px;margin-bottom:12px;border-left:5px solid transparent;cursor:pointer;background:var(--card);border-radius:8px;}
+.sentence-block{padding:18px;margin-bottom:12px;border-left:5px solid transparent;cursor:pointer;background:var(--card);border-radius:8px; position: relative;}
 .k-sent { cursor: pointer; transition: background-color 0.2s; padding: 2px 0; border-radius: 4px; }
 .k-sent:hover { background-color: #e1f5fe; color: #000; }
 .word-active { background-color: #ffeb3b !important; color: #000; box-shadow: 0 0 5px #ffeb3b; }
@@ -49,6 +49,8 @@ input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px soli
 .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
 .modal form { background-color: var(--card); margin: 15% auto; padding: 25px; border: 1px solid var(--border); width: 85%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); color: var(--text); position: relative; }
 .word-row { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0; }
+.shadow-btn { float: right; margin-left: 10px; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: #ecf0f1; color: #333; }
+.shadow-recording { background: #e74c3c !important; color: white; animation: pulse 1.5s infinite; }
 
 .word-span { transition: 0.1s; border-bottom: 1px dotted transparent; }
 body.mode-read .word-span { pointer-events: none; } 
@@ -65,6 +67,8 @@ body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radi
 </style>
 <script>
 let curAud=null, sentSpans=[], aFrm=null, rate=1.0, acc='com', cumWeights=[];
+let shadowRec=null, shadowChunks=[];
+
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
@@ -101,6 +105,41 @@ function fetchTranslation(w) { fetch('/traduzir_palavra?w='+w).then(r=>r.json())
 function refreshTrans() { const w = document.getElementById("fIn").value; fetchTranslation(w); }
 function openManualAdd() { closeNav(); document.getElementById("mod").style.display="block"; document.getElementById("fIn").value=""; document.getElementById("fIn").removeAttribute('readonly'); document.getElementById("fIn").placeholder="Type in PT or EN (Auto-Translate)..."; }
 function nextWord() { if(wordPool.length > 0) { const w = wordPool[Math.floor(Math.random() * wordPool.length)]; document.getElementById('targetWord').innerText = w.w; document.getElementById('targetIPA').innerText = w.ipa; document.getElementById('feedbackBox').innerHTML = "Tap mic & speak..."; document.getElementById('micBtn').style.background = "var(--accent)"; document.getElementById('micBtn').classList.remove('mic-btn-active'); } }
+
+// SHADOWING LOGIC
+function toggleShadow(btn, e) {
+    e.stopPropagation();
+    if(curAud) { curAud.pause(); cancelAnimationFrame(aFrm); document.getElementById('playBtn').innerText='▶'; }
+    
+    if (btn.classList.contains('shadow-recording')) {
+        // STOP RECORDING
+        if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
+        btn.classList.remove('shadow-recording');
+        btn.innerHTML = '🔊'; // Icon changes to Speaker indicating playback
+    } else {
+        // START RECORDING
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+            shadowRec = new MediaRecorder(stream);
+            shadowChunks = [];
+            shadowRec.ondataavailable = e => shadowChunks.push(e.data);
+            shadowRec.onstop = () => {
+                const blob = new Blob(shadowChunks, { type: 'audio/ogg; codecs=opus' });
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play();
+                btn.innerHTML = '🔊'; // Playing icon
+                audio.onended = () => { btn.innerHTML = '🎤'; }; // Reset to mic
+            };
+            shadowRec.start();
+            btn.classList.add('shadow-recording');
+            btn.innerHTML = '⏹️'; // Stop icon
+        }).catch(err => {
+            console.error(err);
+            alert("Microphone access is required for Shadowing.");
+            btn.innerHTML = '🚫';
+        });
+    }
+}
 
 function toggleMiner() {
     document.body.classList.toggle('mode-read');
@@ -208,7 +247,7 @@ function reveal(el, word) {
 {% elif mode == 'phrases' %}
 <div class="container">
     <h3>Phrasebank</h3>
-    <p style="font-size:0.9rem; color:var(--subtext);">Tap any phrase to listen and practice (Karaoke enabled).</p>
+    <p style="font-size:0.9rem; color:var(--subtext);">Tap phrase for Audio/Karaoke. Use Mic for Shadowing.</p>
     
     {% for sec, list_phrases in phrases.items() %}
     <div class="card">
@@ -217,11 +256,13 @@ function reveal(el, word) {
         </div>
         {% for p in list_phrases %}
         <div class="sentence-block" onclick="prepare(this, '{{p.en}}')">
-            {% for w in p.en.split() %}
-            <span class="k-sent">{{w}}</span> 
-            {% endfor %}
-            <br>
-            <small style="color:var(--subtext); font-style:italic;">{{p.pt}}</small>
+            <button class="btn shadow-btn" onclick="toggleShadow(this, event)">🎤</button>
+            <div style="margin-right: 50px;"> {% for w in p.en.split() %}
+                <span class="k-sent">{{w}}</span> 
+                {% endfor %}
+                <br>
+                <small style="color:var(--subtext); font-style:italic;">{{p.pt}}</small>
+            </div>
         </div>
         {% endfor %}
     </div>
