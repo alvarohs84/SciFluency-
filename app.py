@@ -380,4 +380,34 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
+# --- ROTA PODCAST ---
+@app.route('/podcast/<id>')
+def podcast(id):
+    story = Story.query.get(id)
+    if not story: return "Texto não encontrado", 404
+    
+    # 1. Cria o roteiro do Podcast
+    full_text = f"SciFluency Audio Article. Title: {story.title}. . "
+    
+    # 2. Junta as frases (Limitamos a 60 para o Render não travar por demora)
+    count = 0
+    for s in story.sentences:
+        if count > 60: break 
+        full_text += s.en + ". "
+        count += 1
+        
+    full_text += " End of article."
+
+    # 3. Gera o MP3
+    try:
+        fp = BytesIO()
+        tts = gTTS(text=full_text, lang='en', tld='com')
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return send_file(fp, mimetype='audio/mpeg', as_attachment=True, download_name=f'podcast_{id}.mp3')
+    except Exception as e:
+        return f"Erro ao gerar áudio: {e}", 500
+
+
 if __name__ == '__main__': app.run(host='0.0.0.0', port=5000)
+

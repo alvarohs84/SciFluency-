@@ -212,7 +212,16 @@ function reveal(el, word) {
 {% elif mode == 'miner_res' %}
 <div class="container">{% for w, c in keywords %}<div style="display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid var(--border);background:var(--card);"><span><b>{{w}}</b> ({{c}})</span><button class="btn" onclick="openAdd('{{w}}')">➕</button></div>{% endfor %}</div>
 {% elif mode == 'read' %}
-<div class="container">{% for s in story.sentences %}<div class="sentence-block" onclick="prepare(this,'{{s.en}}')"><b>{{s.en}}</b><br><small>{{s.pt}}</small></div>{% endfor %}</div>
+<div class="container">
+    <div class="card" style="text-align:center; background:#f3e5f5; border:1px solid #9b59b6; margin-bottom: 20px;">
+        <h3 style="margin:0 0 10px 0; color: #8e44ad;">🎧 Sci-Podcast</h3>
+        <p style="font-size:0.9rem; color:#555;">Transform this text into an audio episode.</p>
+        <a href="/podcast/{{story.id}}" class="btn" style="background:#8e44ad; width:100%; display:block; box-sizing:border-box; text-decoration:none;">DOWNLOAD MP3</a>
+    </div>
+    {% for s in story.sentences %}
+    <div class="sentence-block" onclick="prepare(this,'{{s.en}}')"><b>{{s.en}}</b><br><small>{{s.pt}}</small></div>
+    {% endfor %}
+</div>
 {% elif mode == 'new' %}
 <div class="container"><form action="/processar" method="POST" enctype="multipart/form-data"><div class="card"><h3>New Reading</h3><label>Upload (PDF, TXT, RIS, NBIB):</label><input type="file" name="arquivo_upload" accept=".pdf,.txt,.ris,.nbib"><textarea name="texto_full" placeholder="Or paste text here..." style="height:150px; margin-top:10px;"></textarea><button class="btn" style="width:100%">PROCESS</button></div></form></div>
 {% endif %}
