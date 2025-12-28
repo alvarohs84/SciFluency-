@@ -1,0 +1,10 @@
+Flask
+Flask-SQLAlchemy
+SQLAlchemy
+deep-translator
+pypdf
+gTTS
+biopython
+eng-to-ipa
+gunicorn
+psycopg2-binary
