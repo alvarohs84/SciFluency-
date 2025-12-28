@@ -32,11 +32,14 @@ APP_NAME = "SciFluency"
 
 db.init_app(app)
 
-# Links globais para o template
+# --- LINKS DO RESEARCH HUB (ATUALIZADO) ---
 RESEARCH_LINKS = [
     {"name": "PubMed", "url": "https://pubmed.ncbi.nlm.nih.gov/", "icon": "🧬", "desc": "Biomedical Literature"},
     {"name": "SciELO", "url": "https://scielo.org/", "icon": "🌎", "desc": "Open Access Journals"},
-    {"name": "Google Scholar", "url": "https://scholar.google.com.br/", "icon": "🎓", "desc": "Academic Search"}
+    {"name": "Google Scholar", "url": "https://scholar.google.com.br/", "icon": "🎓", "desc": "Academic Search"},
+    {"name": "Cochrane", "url": "https://www.cochranelibrary.com/", "icon": "🏥", "desc": "Evidence-Based Medicine"},
+    {"name": "Scopus", "url": "https://www.scopus.com/", "icon": "🔭", "desc": "Citation Database"},
+    {"name": "Web of Science", "url": "https://www.webofscience.com/", "icon": "🕸️", "desc": "Scientific Citation Index"}
 ]
 
 # --- FUNÇÕES DE APOIO AO BANCO ---
@@ -374,7 +377,7 @@ def traduzir_palavra(): return jsonify({"t": GoogleTranslator(source='en', targe
 @app.route('/novo')
 def novo(): return render_template('layout.html', mode='new', app_name=APP_NAME)
 
-# --- NOVA ROTA PODCAST BILÍNGUE ---
+# --- ROTA PODCAST BILÍNGUE (MANTIDA) ---
 @app.route('/podcast/<id>')
 def podcast(id):
     story = Story.query.get(id)
