@@ -3,7 +3,7 @@ import json
 import csv
 import uuid
 import re
-import random  # <--- CORREÇÃO: O import que faltava!
+import random
 import time
 from io import BytesIO, StringIO, TextIOWrapper
 from datetime import datetime, timedelta
@@ -86,7 +86,6 @@ def index():
         if count > 15: color = "var(--heat-3)"
         heatmap.append({"date": d_date, "count": count, "color": color, "day": d_date[-2:]})
     stats = {"total": total_cards, "mastered": mastered_cards, "heatmap": heatmap}
-    # Passamos RESEARCH_LINKS aqui caso o layout precise em algum menu global
     return render_template('layout.html', mode='list', stories=Story.query.all(), decks=[deck_data], stats=stats, app_name=APP_NAME, links=RESEARCH_LINKS)
 
 @app.route('/reset_decks')
@@ -292,7 +291,7 @@ def jogar(id):
     due = Card.query.filter(Card.deck_id == target_deck, Card.next_review <= datetime.now().strftime('%Y-%m-%d')).all()
     card_data = None
     if due:
-        c = random.choice(due) # random agora está importado e vai funcionar!
+        c = random.choice(due)
         cloze_parts = re.split(r'\[(.*?)\]', c.front) 
         is_cloze = len(cloze_parts) > 1
         card_data = {"id": c.id, "front": c.front, "back": c.back, "ipa": c.ipa, "context": c.context, "is_cloze": is_cloze, "cloze_hint": (cloze_parts[0] + "_____" + cloze_parts[2]) if is_cloze else ""}
@@ -375,39 +374,52 @@ def traduzir_palavra(): return jsonify({"t": GoogleTranslator(source='en', targe
 @app.route('/novo')
 def novo(): return render_template('layout.html', mode='new', app_name=APP_NAME)
 
-with app.app_context(): 
-    db.create_all()
-    check_and_migrate_db()
-    seed_database()
-
-# --- ROTA PODCAST ---
+# --- NOVA ROTA PODCAST BILÍNGUE ---
 @app.route('/podcast/<id>')
 def podcast(id):
     story = Story.query.get(id)
     if not story: return "Texto não encontrado", 404
     
-    # 1. Cria o roteiro do Podcast
-    full_text = f"SciFluency Audio Article. Title: {story.title}. . "
-    
-    # 2. Junta as frases (Limitamos a 60 para o Render não travar por demora)
-    count = 0
-    for s in story.sentences:
-        if count > 60: break 
-        full_text += s.en + ". "
-        count += 1
-        
-    full_text += " End of article."
-
-    # 3. Gera o MP3
     try:
-        fp = BytesIO()
-        tts = gTTS(text=full_text, lang='en', tld='com')
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        return send_file(fp, mimetype='audio/mpeg', as_attachment=True, download_name=f'podcast_{id}.mp3')
-    except Exception as e:
-        return f"Erro ao gerar áudio: {e}", 500
+        full_audio = BytesIO()
+        
+        # 1. Introdução
+        intro_text = f"SciFluency Bilingual Audio. {story.title}."
+        tts_intro = gTTS(text=intro_text, lang='en', tld='com')
+        tts_intro.write_to_fp(full_audio)
+        
+        # 2. Loop frases
+        count = 0
+        for s in story.sentences:
+            if count > 20: break 
+            
+            if s.en and s.pt:
+                # Inglês
+                tts_en = gTTS(text=s.en, lang='en', tld='com')
+                tts_en.write_to_fp(full_audio)
+                
+                # Português
+                tts_pt = gTTS(text=s.pt, lang='pt', tld='com.br')
+                tts_pt.write_to_fp(full_audio)
+                
+                time.sleep(0.3)
+                
+            count += 1
+            
+        # 3. Fim
+        tts_end = gTTS(text="End of session.", lang='en')
+        tts_end.write_to_fp(full_audio)
 
+        full_audio.seek(0)
+        return send_file(full_audio, mimetype='audio/mpeg', as_attachment=True, download_name=f'bilingual_{id}.mp3')
+
+    except Exception as e:
+        print(f"Erro Podcast: {e}")
+        return f"Erro ao gerar podcast: {e}", 500
+
+with app.app_context(): 
+    db.create_all()
+    check_and_migrate_db()
+    seed_database()
 
 if __name__ == '__main__': app.run(host='0.0.0.0', port=5000)
-
