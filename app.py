@@ -372,36 +372,25 @@ def search():
             except: pass
     return render_template_string(PAGE_LAYOUT, mode='search', results=results, query=query, retstart=retstart, total_count=count, app_name=APP_NAME)
 
-# --- NOVA ROTA: SALVAR ARTIGO DA BUSCA ---
 @app.route('/save_article', methods=['POST'])
 def save_article():
     title = request.form.get('title', 'No Title')
     abstract = request.form.get('abstract', '')
-    
     if not abstract:
         return redirect(url_for('search'))
-
     sid = str(uuid.uuid4())[:8]
     new_story = Story(id=sid, title=title[:150]) 
     db.session.add(new_story)
-    
-    # Processa o abstract em frases para estudo
     clean_text = re.sub(r'\s+', ' ', abstract)
     frases = re.split(r'(?<=[.!?])\s+(?=[A-Z])', clean_text)
-    
     tr = GoogleTranslator(source='en', target='pt')
-    
     for f in frases:
         if len(f) < 10: continue
-        try: 
-            pt = tr.translate(f)
-        except: 
-            pt = "..."
+        try: pt = tr.translate(f)
+        except: pt = "..."
         db.session.add(Sentence(en=f, pt=pt, story_id=sid))
-        
     db.session.commit()
     log_activity(3)
-    
     return redirect(url_for('index'))
 
 @app.route('/summarizer', methods=['GET', 'POST'])
@@ -579,29 +568,74 @@ def checker():
             corrected = improve_english_text(original)
     return render_template_string(PAGE_LAYOUT, mode='checker', original=original, corrected=corrected, app_name=APP_NAME)
 
+# --- ROTA PROCESSAR (MULTI-UPLOAD ATUALIZADO) ---
 @app.route('/processar', methods=['POST'])
 def processar():
-    text = request.form.get('texto_full', '')
-    if 'arquivo_upload' in request.files:
-        f = request.files['arquivo_upload']
+    text_content = request.form.get('texto_full', '')
+    
+    # Suporte a múltiplos arquivos
+    uploaded_files = request.files.getlist("arquivo_upload")
+    
+    processed_count = 0
+    last_story_id = None
+
+    # Se for texto colado
+    if text_content.strip():
+        sid = str(uuid.uuid4())[:8]
+        clean_text = re.sub(r'\s+', ' ', text_content)
+        frases = re.split(r'(?<=[.!?])\s+(?=[A-Z])', clean_text)
+        db.session.add(Story(id=sid, title=(frases[0][:40] + "..." if frases else "Pasted Text")))
+        tr = GoogleTranslator(source='en', target='pt')
+        for f in frases[:50]:
+            if len(f)<10: continue
+            try: pt=tr.translate(f)
+            except: pt="..."
+            db.session.add(Sentence(en=f, pt=pt, story_id=sid))
+        processed_count += 1
+        last_story_id = sid
+
+    # Processa cada arquivo
+    for f in uploaded_files:
+        if not f or not f.filename: continue
+        
+        file_text = ""
         try:
-            if f.filename.endswith('.pdf'): text += " ".join([p.extract_text() or "" for p in PdfReader(f).pages])
-            elif f.filename.endswith('.txt'): text += f.read().decode('utf-8', errors='ignore')
-            elif f.filename.endswith(('.ris','.nbib')): text += parse_ris_nbib(f.read().decode('utf-8', errors='ignore'))
-        except: pass
-    clean_text = re.sub(r'\s+', ' ', text)
-    frases = re.split(r'(?<=[.!?])\s+(?=[A-Z])', clean_text)
-    sid = str(uuid.uuid4())[:8]
-    db.session.add(Story(id=sid, title=(frases[0][:40] + "..." if frases else "New Text")))
-    tr = GoogleTranslator(source='en', target='pt')
-    for f in frases[:50]:
-        if len(f)<15: continue
-        try: pt=tr.translate(f)
-        except: pt="..."
-        db.session.add(Sentence(en=f, pt=pt, story_id=sid))
+            if f.filename.endswith('.pdf'): 
+                file_text = " ".join([p.extract_text() or "" for p in PdfReader(f).pages])
+            elif f.filename.endswith('.txt'): 
+                file_text = f.read().decode('utf-8', errors='ignore')
+            elif f.filename.endswith(('.ris','.nbib')): 
+                file_text = parse_ris_nbib(f.read().decode('utf-8',errors='ignore'))
+        except: continue
+
+        if file_text.strip():
+            clean_text = re.sub(r'\s+', ' ', file_text)
+            frases = re.split(r'(?<=[.!?])\s+(?=[A-Z])', clean_text)
+            sid = str(uuid.uuid4())[:8]
+            title = f.filename
+            if len(frases) > 0:
+                title = f.filename + " - " + frases[0][:30]
+            
+            db.session.add(Story(id=sid, title=title))
+            tr = GoogleTranslator(source='en', target='pt')
+            
+            for sentence in frases[:60]: # Limite de frases para não travar
+                if len(sentence) < 15: continue
+                try: pt = tr.translate(sentence)
+                except: pt = "..."
+                db.session.add(Sentence(en=sentence, pt=pt, story_id=sid))
+            
+            processed_count += 1
+            last_story_id = sid
+
     db.session.commit()
-    log_activity(5)
-    return redirect(url_for('ler', id=sid))
+    log_activity(5 * processed_count)
+    
+    # Se processou só um, abre ele. Se foram vários, vai pra home.
+    if processed_count == 1 and last_story_id:
+        return redirect(url_for('ler', id=last_story_id))
+    
+    return redirect(url_for('index'))
 
 @app.route('/ler/<id>')
 def ler(id): return render_template_string(PAGE_LAYOUT, mode='read', story=Story.query.get(id), app_name=APP_NAME)
@@ -617,18 +651,15 @@ def traduzir_palavra(): return jsonify({"t": GoogleTranslator(source='en', targe
 @app.route('/novo')
 def novo(): return render_template_string(PAGE_LAYOUT, mode='new', app_name=APP_NAME)
 
-# --- ROTA PODCAST BILÍNGUE ---
 @app.route('/podcast/<id>')
 def podcast(id):
     story = Story.query.get(id)
     if not story: return "Texto não encontrado", 404
-    
     try:
         full_audio = BytesIO()
         intro_text = f"SciFluency Bilingual Audio. {story.title}."
         tts_intro = gTTS(text=intro_text, lang='en', tld='com')
         tts_intro.write_to_fp(full_audio)
-        
         count = 0
         for s in story.sentences:
             if count > 20: break 
@@ -639,12 +670,10 @@ def podcast(id):
                 tts_pt.write_to_fp(full_audio)
                 time.sleep(0.3)
             count += 1
-            
         tts_end = gTTS(text="End of session.", lang='en')
         tts_end.write_to_fp(full_audio)
         full_audio.seek(0)
         return send_file(full_audio, mimetype='audio/mpeg', as_attachment=True, download_name=f'bilingual_{id}.mp3')
-
     except Exception as e:
         print(f"Erro Podcast: {e}")
         return f"Erro ao gerar podcast: {e}", 500
@@ -654,7 +683,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND COMPLETO ---
+# --- FRONTEND (MULTI-UPLOAD HABILITADO) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -929,7 +958,7 @@ function reveal(el, word) {
     {% endfor %}
 </div>
 {% elif mode == 'new' %}
-<div class="container"><form action="/processar" method="POST" enctype="multipart/form-data"><div class="card"><h3>New Reading</h3><label>Upload (PDF, TXT, RIS, NBIB):</label><input type="file" name="arquivo_upload" accept=".pdf,.txt,.ris,.nbib"><textarea name="texto_full" placeholder="Or paste text here..." style="height:150px; margin-top:10px;"></textarea><button class="btn" style="width:100%">PROCESS</button></div></form></div>
+<div class="container"><form action="/processar" method="POST" enctype="multipart/form-data"><div class="card"><h3>New Reading</h3><label>Upload (PDF, TXT, RIS, NBIB):</label><input type="file" name="arquivo_upload" multiple accept=".pdf,.txt,.ris,.nbib"><textarea name="texto_full" placeholder="Or paste text here..." style="height:150px; margin-top:10px;"></textarea><button class="btn" style="width:100%">PROCESS</button></div></form></div>
 {% endif %}
 
 <div class="fab" onclick="openManualAdd()">➕</div>
