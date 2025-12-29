@@ -6,14 +6,15 @@ import json
 import asyncio
 import edge_tts
 from io import BytesIO
-from datetime import datetime, timedelta
 from collections import Counter
+from datetime import datetime, timedelta
 
 from flask import Flask, render_template_string, request, redirect, url_for, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect
 from deep_translator import GoogleTranslator
 from pypdf import PdfReader
+from gtts import gTTS
 from Bio import Entrez
 import eng_to_ipa as ipa
 
@@ -32,12 +33,12 @@ APP_NAME = "SciFluency"
 
 # --- MAPEAMENTO DE VOZES NEURAIS ---
 VOICE_MAPPING = {
-    'com': 'en-US-ChristopherNeural',  # Americano Acadêmico
-    'co.uk': 'en-GB-RyanNeural',       # Britânico Acadêmico
-    'pt': 'pt-BR-AntonioNeural'        # Português Natural
+    'com': 'en-US-ChristopherNeural',
+    'co.uk': 'en-GB-RyanNeural',
+    'pt': 'pt-BR-AntonioNeural'
 }
 
-# --- FUNÇÕES AUXILIARES DE ÁUDIO (ASYNC WRAPPER) ---
+# --- FUNÇÕES DE ÁUDIO ---
 async def generate_neural_audio(text, voice):
     communicate = edge_tts.Communicate(text, voice)
     audio_data = BytesIO()
@@ -50,7 +51,6 @@ async def generate_neural_audio(text, voice):
 def get_audio_sync(text, accent='com'):
     voice = VOICE_MAPPING.get(accent, 'en-US-ChristopherNeural')
     try:
-        # Cria um novo event loop para rodar o async dentro do Flask
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         return loop.run_until_complete(generate_neural_audio(text, voice))
@@ -92,7 +92,7 @@ class StudyLog(db.Model):
     date = db.Column(db.String(10))
     count = db.Column(db.Integer, default=0)
 
-# --- DADOS E CONSTANTES ---
+# --- CONSTANTES ---
 RESEARCH_LINKS = [
     {"name": "PubMed", "url": "https://pubmed.ncbi.nlm.nih.gov/", "icon": "🧬", "desc": "Biomedical Literature"},
     {"name": "SciELO", "url": "https://scielo.org/", "icon": "🌎", "desc": "Open Access Journals"},
@@ -106,32 +106,23 @@ ACADEMIC_PHRASEBANK = {
     "1. Introduction & Context": [
         {"en": "Recent developments in this field have heightened the need for...", "pt": "Desenvolvimentos recentes neste campo aumentaram a necessidade de..."},
         {"en": "Currently, there is a paucity of data regarding...", "pt": "Atualmente, há escassez de dados sobre..."},
-        {"en": "This study aims to investigate the relationship between...", "pt": "Este estudo visa investigar a relação entre..."},
-        {"en": "Previous research has established that...", "pt": "Pesquisas anteriores estabeleceram que..."},
-        {"en": "The primary objective of this paper is to evaluate...", "pt": "O objetivo principal deste artigo é avaliar..."}
+        {"en": "This study aims to investigate the relationship between...", "pt": "Este estudo visa investigar a relação entre..."}
     ],
     "2. Methods & Materials": [
         {"en": "Data were collected using a semi-structured interview guide.", "pt": "Os dados foram coletados usando um roteiro de entrevista semiestruturado."},
-        {"en": "The participants were divided into two groups.", "pt": "Os participantes foram divididos em dois grupos."},
-        {"en": "Statistical analysis was performed using SPSS software.", "pt": "A análise estatística foi realizada usando o software SPSS."},
-        {"en": "We excluded patients with a history of...", "pt": "Excluímos pacientes com histórico de..."}
+        {"en": "Statistical analysis was performed using SPSS software.", "pt": "A análise estatística foi realizada usando o software SPSS."}
     ],
     "3. Results & Findings": [
         {"en": "There was a significant correlation between...", "pt": "Houve uma correlação significativa entre..."},
-        {"en": "Table 1 presents the demographic characteristics of the sample.", "pt": "A Tabela 1 apresenta as características demográficas da amostra."},
-        {"en": "The results indicate that...", "pt": "Os resultados indicam que..."},
-        {"en": "Our findings are consistent with those of previous studies.", "pt": "Nossos achados são consistentes com os de estudos anteriores."}
+        {"en": "The results indicate that...", "pt": "Os resultados indicam que..."}
     ],
     "4. Discussion & Argumentation": [
         {"en": "These findings suggest that...", "pt": "Esses achados sugerem que..."},
-        {"en": "One possible explanation for this result is...", "pt": "Uma possível explicação para este resultado é..."},
-        {"en": "This study provides new insights into...", "pt": "Este estudo fornece novos insights sobre..."},
         {"en": "However, some limitations should be noted.", "pt": "No entanto, algumas limitações devem ser notadas."}
     ],
     "5. Conclusion": [
         {"en": "In conclusion, this study demonstrates that...", "pt": "Em conclusão, este estudo demonstra que..."},
-        {"en": "The evidence from this study suggests...", "pt": "As evidências deste estudo sugerem..."},
-        {"en": "Overall, these results highlight the importance of...", "pt": "No geral, esses resultados destacam a importância de..."}
+        {"en": "The evidence from this study suggests...", "pt": "As evidências deste estudo sugerem..."}
     ]
 }
 
@@ -275,10 +266,7 @@ def parse_nbib_bulk(content):
 def format_abstract_smart(text):
     if not text: return ""
     formatted = text
-    # Limpeza simples para evitar poluição visual do PDF
     formatted = re.sub(r'\s+', ' ', formatted)
-    
-    # Destaque de seções
     sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
     for sec in sections:
         pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
@@ -288,8 +276,14 @@ def format_abstract_smart(text):
     final_html = ""
     for sent in sentences:
         if len(sent.strip()) > 1:
-            # Mantemos o leitor de frases para PDF (sem spans por palavra para evitar poluição)
-            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px; padding:8px; cursor:pointer; line-height:1.6;'>{sent}</div>"
+            words_html = ""
+            for word in sent.split():
+                clean_w = re.sub(r"[^\w]", "", word) 
+                if clean_w:
+                    words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
+                else:
+                    words_html += word + " "
+            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px; padding:8px; cursor:pointer; line-height:1.6;'>{words_html}</div>"
     return final_html
 
 # --- ROTAS ---
@@ -332,14 +326,11 @@ def tts_route():
     else:
         text = request.args.get('text', '')
         accent = request.args.get('accent', 'com')
-    
-    # GERA AUDIO NEURAL (EDGE-TTS)
     audio_data = get_audio_sync(text, accent)
-    
     if audio_data:
         return send_file(audio_data, mimetype='audio/mpeg')
     else:
-        return "Error generating audio", 500
+        return "Error", 500
 
 @app.route('/systems', methods=['GET', 'POST'])
 def systems():
@@ -376,14 +367,10 @@ def search():
     query = ""
     retstart = 0
     count = 0
-    
     if request.method == 'POST':
         query = request.form.get('query', '')
-        try:
-            retstart = int(request.form.get('retstart', 0))
-        except:
-            retstart = 0
-            
+        try: retstart = int(request.form.get('retstart', 0))
+        except: retstart = 0
         if query:
             try:
                 handle = Entrez.esearch(db="pubmed", term=query, retmax=5, retstart=retstart) 
@@ -438,13 +425,10 @@ def summarizer():
                         content = f.read().decode('utf-8', errors='replace')
                         all_articles = parse_nbib_bulk(content)
                         content_to_process = all_articles[:5] 
-                except Exception as e: 
-                    print(f"Erro no Summarizer: {e}")
-
+                except Exception as e: print(f"Erro no Summarizer: {e}")
         text_input = request.form.get('text_input', '')
         title_input = request.form.get('title_input', 'Manual Input')
         if text_input: content_to_process.append({"title": title_input, "abstract": text_input})
-            
         for art in content_to_process:
             if art['abstract']:
                 formatted_html = format_abstract_smart(art['abstract'])
@@ -453,12 +437,7 @@ def summarizer():
                     time.sleep(0.5)
                     translation = GoogleTranslator(source='en', target='pt').translate(clean_text_for_api[:4500])
                 except: translation = "Tradução indisponível."
-                batch_results.append({
-                    "title": art['title'], 
-                    "formatted_html": formatted_html, 
-                    "clean_text": clean_text_for_api, 
-                    "translation": translation
-                })
+                batch_results.append({"title": art['title'], "formatted_html": formatted_html, "clean_text": clean_text_for_api, "translation": translation})
         if batch_results: log_activity(len(batch_results) * 2)
     return render_template_string(PAGE_LAYOUT, mode='summarizer', batch_results=batch_results, app_name=APP_NAME)
 
@@ -494,8 +473,7 @@ def export_vocab():
     si = StringIO()
     cw = csv.writer(si)
     cw.writerow(['Front', 'Back', 'IPA', 'Context', 'Next Review'])
-    for c in cards:
-        cw.writerow([c.front, c.back, c.ipa, c.context or "", c.next_review])
+    for c in cards: cw.writerow([c.front, c.back, c.ipa, c.context or "", c.next_review])
     output = BytesIO()
     output.write(u'\ufeff'.encode('utf-8'))
     output.write(si.getvalue().encode('utf-8'))
@@ -510,17 +488,14 @@ def import_vocab():
             try:
                 stream = TextIOWrapper(f.stream, encoding='utf-8')
                 reader = csv.reader(stream)
-                header = next(reader, None)
-                count = 0
+                next(reader, None)
                 for row in reader:
                     if len(row) >= 2:
                         front = row[0]; back = row[1]
                         ipa_text = row[2] if len(row) > 2 else get_phonetic(front)
                         context_text = row[3] if len(row) > 3 else ""
                         exists = Card.query.filter_by(front=front, deck_id="my_vocab").first()
-                        if not exists:
-                            db.session.add(Card(front=front, back=back, ipa=ipa_text, context=context_text, deck_id="my_vocab", next_review=datetime.now().strftime('%Y-%m-%d')))
-                            count += 1
+                        if not exists: db.session.add(Card(front=front, back=back, ipa=ipa_text, context=context_text, deck_id="my_vocab", next_review=datetime.now().strftime('%Y-%m-%d')))
                 db.session.commit()
             except Exception as e: print(e)
     return redirect(url_for('vocab_list'))
@@ -528,9 +503,7 @@ def import_vocab():
 @app.route('/delete_card/<int:id>')
 def delete_card(id):
     c = Card.query.get(id)
-    if c:
-        db.session.delete(c)
-        db.session.commit()
+    if c: db.session.delete(c); db.session.commit()
     return redirect(url_for('vocab_list'))
 
 @app.route('/adicionar_vocab', methods=['POST'])
@@ -540,11 +513,9 @@ def adicionar_vocab():
     is_ajax = request.form.get('ajax', '0') == '1'
     if original:
         en, pt = process_language_logic(original)
-        front = en
-        back = pt
+        front = en; back = pt
     else:
-        front = request.form.get('f')
-        back = request.form.get('b')
+        front = request.form.get('f'); back = request.form.get('b')
     ipa_text = get_phonetic(front)
     db.session.add(Card(front=front, back=back, ipa=ipa_text, context=context_text, deck_id="my_vocab", next_review=datetime.now().strftime('%Y-%m-%d'), interval=0))
     db.session.commit()
@@ -599,8 +570,7 @@ def checker():
     corrected = ""
     if request.method == 'POST':
         original = request.form.get('text_input', '')
-        if original:
-            corrected = improve_english_text(original)
+        if original: corrected = improve_english_text(original)
     return render_template_string(PAGE_LAYOUT, mode='checker', original=original, corrected=corrected, app_name=APP_NAME)
 
 @app.route('/processar', methods=['POST'])
@@ -609,7 +579,6 @@ def processar():
     uploaded_files = request.files.getlist("arquivo_upload")
     processed_count = 0
     last_story_id = None
-
     if text_content.strip():
         sid = str(uuid.uuid4())[:8]
         clean_text = re.sub(r'\s+', ' ', text_content)
@@ -623,19 +592,14 @@ def processar():
             db.session.add(Sentence(en=f, pt=pt, story_id=sid))
         processed_count += 1
         last_story_id = sid
-
     for f in uploaded_files:
         if not f or not f.filename: continue
         file_text = ""
         try:
-            if f.filename.endswith('.pdf'): 
-                file_text = " ".join([p.extract_text() or "" for p in PdfReader(f).pages])
-            elif f.filename.endswith('.txt'): 
-                file_text = f.read().decode('utf-8', errors='ignore')
-            elif f.filename.endswith(('.ris','.nbib')): 
-                file_text = parse_ris_nbib(f.read().decode('utf-8',errors='ignore'))
+            if f.filename.endswith('.pdf'): file_text = " ".join([p.extract_text() or "" for p in PdfReader(f).pages])
+            elif f.filename.endswith('.txt'): file_text = f.read().decode('utf-8', errors='ignore')
+            elif f.filename.endswith(('.ris','.nbib')): file_text = parse_ris_nbib(f.read().decode('utf-8',errors='ignore'))
         except: continue
-
         if file_text.strip():
             clean_text = re.sub(r'\s+', ' ', file_text)
             frases = re.split(r'(?<=[.!?])\s+(?=[A-Z])', clean_text)
@@ -651,11 +615,9 @@ def processar():
                 db.session.add(Sentence(en=sentence, pt=pt, story_id=sid))
             processed_count += 1
             last_story_id = sid
-
     db.session.commit()
     log_activity(5 * processed_count)
-    if processed_count == 1 and last_story_id:
-        return redirect(url_for('ler', id=last_story_id))
+    if processed_count == 1 and last_story_id: return redirect(url_for('ler', id=last_story_id))
     return redirect(url_for('index'))
 
 @app.route('/ler/<id>')
@@ -679,7 +641,6 @@ def podcast(id):
     try:
         full_audio = BytesIO()
         intro_text = f"SciFluency Bilingual Audio. {story.title}."
-        # Mantemos gTTS para podcast offline por enquanto, pois edge-tts requer loop async complexo para chunks
         tts_intro = gTTS(text=intro_text, lang='en', tld='com')
         tts_intro.write_to_fp(full_audio)
         count = 0
@@ -705,7 +666,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (VISUAL LIMPO, KARAOKÊ HÍBRIDO E AUDIO NEURAL) ---
+# --- FRONTEND (PAGE_LAYOUT COM POPUP DICIONARIO) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -743,7 +704,6 @@ input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px soli
 .fab { position: fixed; bottom: 90px; right: 20px; width: 56px; height: 56px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; transition: transform 0.2s; user-select: none; }
 .fab:active { transform: scale(0.95); }
 .mic-btn-active { background-color: #e74c3c !important; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 .dash-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
 .stat-card { background: var(--card); padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px var(--shadow); }
 .stat-val { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
@@ -757,7 +717,17 @@ input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px soli
 .word-row { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0; }
 .shadow-btn { float: right; margin-left: 10px; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: #ecf0f1; color: #333; }
 .shadow-recording { background: #e74c3c !important; color: white; animation: pulse 1.5s infinite; }
-
+.word-span { transition: 0.1s; border-bottom: 1px dotted transparent; }
+body.mode-read .word-span { pointer-events: none; } 
+body.mode-read .k-sent { cursor: pointer; }
+body.mode-mine .k-sent { pointer-events: none; }
+body.mode-mine .word-span { pointer-events: auto; cursor: context-menu; border-bottom: 2px dotted #e67e22; color: #d35400; }
+body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radius: 3px; }
+/* DICTIONARY MODAL STYLES */
+#dictMod .modal-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; color: var(--accent); }
+#dictMod .modal-sub { color: var(--subtext); font-style: italic; margin-bottom: 20px; display: block; }
+#dictMod .trans-box { background: var(--bg); padding: 15px; border-radius: 10px; font-size: 1.1rem; margin-bottom: 20px; border: 1px solid var(--border); }
+.dict-actions { display: flex; gap: 10px; }
 /* QUIZ STYLES */
 .quiz-hidden { background: #f1c40f; color: transparent; border-radius: 4px; padding: 0 5px; cursor: pointer; user-select: none; border-bottom: 2px solid #d35400; font-size: 0.9em; min-width: 30px; display: inline-block; text-align: center; }
 .quiz-hidden:hover { background: #f39c12; }
@@ -778,116 +748,71 @@ function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
-// --- ESTRATÉGIA HÍBRIDA COM TIMING PONDERADO ---
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
     if(karaokeTimeout) clearTimeout(karaokeTimeout);
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
-
     const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
     const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
-
     try { 
         const response = await fetch('/tts', { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
             body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=' + acc 
         }); 
-        
         const blob = await response.blob(); 
         const url = URL.createObjectURL(blob); 
         curAud = new Audio(url); 
         curAud.playbackRate = rate; 
-        
         curAud.onloadedmetadata = () => { 
             btn.innerText='⏸';
             curAud.play();
-            // Inicia o Karaoke SE HOUVER SPANS DE PALAVRAS
-            if(currentSpans.length > 0) {
-                startWeightedKaraoke(curAud.duration);
-            }
+            if(currentSpans.length > 0) startWeightedKaraoke(curAud.duration);
         }; 
-        
         curAud.onended = () => { 
             btn.innerText='▶'; 
             if(karaokeTimeout) clearTimeout(karaokeTimeout);
             document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
             document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active'));
         }; 
-        
     } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
 }
 
 function startWeightedKaraoke(duration) {
     if (currentSpans.length === 0) return;
-    
-    // Calcula o peso total (número de caracteres)
     let weights = currentSpans.map(span => span.innerText.length);
     let totalWeight = weights.reduce((a, b) => a + b, 0);
-    
-    // Tempo total em ms ajustado pela velocidade
     let totalTimeMs = (duration * 1000) / rate;
-    
-    // Quanto tempo vale 1 caractere?
     let timePerWeight = totalTimeMs / totalWeight;
-    
     let index = 0;
-    
-    // Função recursiva para acender a próxima palavra
     function nextWord() {
-        if (index >= currentSpans.length) {
-            clearTimeout(karaokeTimeout);
-            return;
-        }
-        
-        // Remove destaque anterior
+        if (index >= currentSpans.length) { clearTimeout(karaokeTimeout); return; }
         if (index > 0) currentSpans[index-1].classList.remove('word-active');
-        
-        // Adiciona destaque atual
         currentSpans[index].classList.add('word-active');
-        
-        // Calcula quanto tempo essa palavra deve ficar acesa
         let delay = weights[index] * timePerWeight;
-        
         index++;
         karaokeTimeout = setTimeout(nextWord, delay);
     }
-    
-    // Começa
     nextWord();
 }
 
 function togglePlay(){ 
     if(!curAud) return; 
     const btn=document.getElementById('playBtn'); 
-    if(curAud.paused){ 
-        curAud.play(); 
-        btn.innerText='⏸';
-    } else{ 
-        curAud.pause(); 
-        btn.innerText='▶'; 
-        if(karaokeTimeout) clearTimeout(karaokeTimeout);
-    } 
+    if(curAud.paused){ curAud.play(); btn.innerText='⏸'; } 
+    else{ curAud.pause(); btn.innerText='▶'; if(karaokeTimeout) clearTimeout(karaokeTimeout); } 
 }
 
 function prepare(el){ 
     if(curAud){curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout);} 
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
     document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
-    
-    // Se for o Phrasebank, tem spans de palavras
     currentSpans = Array.from(el.querySelectorAll('.word-span')); 
-    
-    if (currentSpans.length === 0) {
-        // MODO LEITURA (PDF/ARTIGOS): Destaca o bloco inteiro
-        el.classList.add('sentence-active');
-    }
-    
+    if (currentSpans.length === 0) { el.classList.add('sentence-active'); }
     let textToRead = el.innerText; 
     speak(textToRead); 
 }
 
-function wordClick(e, word) { e.stopPropagation(); if(curAud){ curAud.pause(); } openAdd(word); }
 function openAdd(w){ document.getElementById("mod").style.display="block"; const inp = document.getElementById("fIn"); inp.value = w; inp.removeAttribute('readonly'); fetchTranslation(w); }
 function fetchTranslation(w) { fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>document.getElementById('bIn').value=d.t); }
 function refreshTrans() { const w = document.getElementById("fIn").value; fetchTranslation(w); }
@@ -917,11 +842,7 @@ function toggleShadow(btn, e) {
             shadowRec.start();
             btn.classList.add('shadow-recording');
             btn.innerHTML = '⏹️'; 
-        }).catch(err => {
-            console.error(err);
-            alert("Microphone access is required for Shadowing.");
-            btn.innerHTML = '🚫';
-        });
+        }).catch(err => { console.error(err); alert("Microphone access is required for Shadowing."); btn.innerHTML = '🚫'; });
     }
 }
 
@@ -937,7 +858,53 @@ function toggleMiner() {
         btn.style.background = '#3498db';
     }
 }
-function mineWord(e, w) { e.stopPropagation(); openAdd(w); }
+
+// --- NEW: DICTIONARY POPUP LOGIC ---
+function mineWord(e, w) { 
+    e.stopPropagation(); 
+    // Stop any playing audio
+    if(curAud) { curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout); document.getElementById('playBtn').innerText='▶'; }
+    openDict(w); 
+}
+
+function openDict(w) {
+    const mod = document.getElementById("dictMod");
+    mod.style.display = "block";
+    document.getElementById("dictWord").innerText = w;
+    document.getElementById("dictTrans").innerText = "Loading...";
+    
+    // Fetch translation
+    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{
+        document.getElementById("dictTrans").innerText = d.t;
+        // Pre-fill hidden save form just in case
+        document.getElementById("save_f").value = w;
+        document.getElementById("save_b").value = d.t;
+    });
+}
+
+function saveFromDict() {
+    const w = document.getElementById("dictWord").innerText;
+    const t = document.getElementById("dictTrans").innerText;
+    
+    // Use the existing save form logic via AJAX
+    const formData = new FormData();
+    formData.append('term', w);
+    formData.append('ajax', '1');
+    
+    fetch('/adicionar_vocab', {
+        method: 'POST',
+        body: formData
+    }).then(r=>r.json()).then(d=>{
+        document.getElementById("dictMod").style.display='none';
+        alert("Saved: " + w);
+    });
+}
+
+function playDictWord() {
+    const w = document.getElementById("dictWord").innerText;
+    speak(w);
+}
+
 function submitAjax(e) {
     e.preventDefault();
     const f = e.target;
@@ -972,11 +939,7 @@ function loadQuiz(containerId, textContent) {
         btn.innerText = "🔄 Regenerate Quiz";
     });
 }
-function reveal(el, word) {
-    el.classList.remove('quiz-hidden');
-    el.classList.add('quiz-revealed');
-    el.innerText = word;
-}
+function reveal(el, word) { el.classList.remove('quiz-hidden'); el.classList.add('quiz-revealed'); el.innerText = word; }
 </script></head><body>
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2rem;padding-right:20px;">&times;</a>
@@ -1069,6 +1032,21 @@ function reveal(el, word) {
 <div class="fab" onclick="openManualAdd()">➕</div>
 <div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" oninput="rate=this.value; if(curAud){curAud.playbackRate=this.value;}"></div></div>
 <div id="mod" class="modal" style="display:none;"><form action="/adicionar_vocab" method="POST" onsubmit="submitAjax(event)"><h3 style="margin-top:0">Save to My Vocabulary</h3><div class="modal-actions"><input type="text" id="fIn" name="term" placeholder="Type in PT or EN (Auto-Translate)..." style="width:100%"></div><button class="btn" style="margin-top:10px;">SAVE</button><button type="button" class="btn" style="background:#888;margin-top:10px;" onclick="document.getElementById('mod').style.display='none'">CLOSE</button></form></div>
+
+<div id="dictMod" class="modal" style="display:none;">
+    <form onsubmit="return false;">
+        <div class="modal-header" id="dictWord">Word</div>
+        <span class="modal-sub" id="dictTrans">Loading...</span>
+        <div class="dict-actions">
+            <button class="btn" style="flex:1;" onclick="playDictWord()">🔊 Listen</button>
+            <button class="btn" style="flex:1; background:#27ae60;" onclick="saveFromDict()">💾 Save</button>
+        </div>
+        <button class="btn" style="background:#888; width:100%; margin-top:10px;" onclick="document.getElementById('dictMod').style.display='none'">CLOSE</button>
+        <input type="hidden" id="save_f">
+        <input type="hidden" id="save_b">
+    </form>
+</div>
+
 </body></html>
 """
 
