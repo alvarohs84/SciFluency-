@@ -265,7 +265,7 @@ def format_abstract_smart(text):
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            # CORREÇÃO AQUI: Removemos o atributo problemático data-text
+            # Usamos prepare(this) sem argumentos. O JS pega o texto do elemento.
             final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
@@ -303,7 +303,6 @@ def hub(): return render_template_string(PAGE_LAYOUT, mode='hub', links=RESEARCH
 
 @app.route('/tts', methods=['GET', 'POST'])
 def tts_route():
-    # Rota usada apenas para o Download do Podcast (gTTS)
     if request.method == 'POST':
         text = request.form.get('text', '')
         accent = request.form.get('accent', 'com')
@@ -312,6 +311,7 @@ def tts_route():
         accent = request.args.get('accent', 'com')
     fp = BytesIO()
     try: 
+        # OBTEM AUDIO DO GOOGLE (Servidor)
         gTTS(text=text, lang='en', tld=accent).write_to_fp(fp)
         fp.seek(0)
         return send_file(fp, mimetype='audio/mpeg')
@@ -680,7 +680,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (COM KARAOKÊ NATIVO SINCRONIZADO) ---
+# --- FRONTEND (HÍBRIDO: AUDIO SERVER + JS TIMER) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -746,9 +746,9 @@ body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radi
 @keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 </style>
 <script>
-let synthesis = window.speechSynthesis;
-let utterance = null;
+let curAud = null;
 let currentSpans = [];
+let karaokeInterval = null;
 let rate = 1.0;
 let acc = 'com'; 
 let shadowRec = null; 
@@ -759,74 +759,106 @@ function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
-// --- KARAOKE NATIVO (WEB SPEECH API) ---
-function speak(text){
-    if (synthesis.speaking) synthesis.cancel();
+// --- ESTRATÉGIA HÍBRIDA: ÁUDIO DO SERVIDOR + KARAOKE MATEMÁTICO ---
+async function speak(text){ 
+    if(curAud) { curAud.pause(); curAud = null; } 
+    if(karaokeInterval) clearInterval(karaokeInterval);
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+
+    const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
+    const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
+
+    try { 
+        const response = await fetch('/tts', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+            body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=' + acc 
+        }); 
+        
+        const blob = await response.blob(); 
+        const url = URL.createObjectURL(blob); 
+        curAud = new Audio(url); 
+        curAud.playbackRate = rate; 
+        
+        curAud.onloadedmetadata = () => { 
+            btn.innerText='⏸';
+            curAud.play();
+            // Inicia o Karaoke Estimado
+            startEstimatedKaraoke(curAud.duration);
+        }; 
+        
+        curAud.onended = () => { 
+            btn.innerText='▶'; 
+            if(karaokeInterval) clearInterval(karaokeInterval);
+            document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
+        }; 
+        
+    } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
+}
+
+function startEstimatedKaraoke(duration) {
+    if (currentSpans.length === 0) return;
     
-    utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US'; 
-    utterance.rate = rate; 
+    // Tempo total em ms dividido pelo número de palavras
+    // Ajustado pela velocidade de reprodução (rate)
+    let totalTimeMs = (duration * 1000) / rate;
+    let timePerWord = totalTimeMs / currentSpans.length;
     
-    utterance.onboundary = function(event) {
-        if (event.name === 'word') {
-            document.querySelectorAll('.word-active').forEach(w => w.classList.remove('word-active'));
-            // Tenta achar a palavra correta baseada no índice de caracteres
-            // (Isso funciona melhor se mapearmos spans antes, mas para simplicidade, destacamos por aproximação ou mantemos o foco na frase)
-            // Para "High Precision", precisaríamos mapear charIndex -> spanIndex.
-            // Solução Robusta Simples: Destacar a frase inteira ou tentar achar o span.
-            
-            // TENTATIVA DE MAPEAR (AVANÇADO)
-            let charIndex = event.charIndex;
-            // Acha qual span contem esse indice
-            let count = 0;
-            for(let span of currentSpans) {
-                let len = span.innerText.length + 1; // +1 pro espaço
-                if (charIndex >= count && charIndex < count + len) {
-                    span.classList.add('word-active');
-                    break;
-                }
-                count += len;
-            }
+    let index = 0;
+    
+    // Função para acender a próxima palavra
+    const tick = () => {
+        if (index >= currentSpans.length) {
+            clearInterval(karaokeInterval);
+            return;
         }
+        
+        // Remove destaque anterior
+        if (index > 0) currentSpans[index-1].classList.remove('word-active');
+        
+        // Adiciona destaque atual
+        currentSpans[index].classList.add('word-active');
+        index++;
     };
     
-    utterance.onend = () => { 
-        document.getElementById('playBtn').innerText='▶'; 
-        document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
-    };
-    
-    document.getElementById('playBtn').innerText='⏸';
-    synthesis.speak(utterance);
+    // Executa imediatamente e depois a cada intervalo
+    tick();
+    karaokeInterval = setInterval(tick, timePerWord);
 }
 
 function togglePlay(){ 
-    if(synthesis.speaking){ 
-        if(synthesis.paused) { synthesis.resume(); document.getElementById('playBtn').innerText='⏸'; }
-        else { synthesis.pause(); document.getElementById('playBtn').innerText='▶'; }
-    }
+    if(!curAud) return; 
+    const btn=document.getElementById('playBtn'); 
+    if(curAud.paused){ 
+        curAud.play(); 
+        btn.innerText='⏸';
+        // Recalcular karaoke seria complexo aqui, então simplificamos:
+        // Se pausar, o karaoke pode dessincronizar levemente nesta versão simples
+    } else{ 
+        curAud.pause(); 
+        btn.innerText='▶'; 
+        if(karaokeInterval) clearInterval(karaokeInterval);
+    } 
 }
 
-function prepare(el){
-    if(synthesis.speaking) synthesis.cancel();
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+function prepare(el){ 
+    if(curAud){curAud.pause(); if(karaokeInterval) clearInterval(karaokeInterval);} 
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
     
-    // Pega todos os spans de palavras dentro do bloco clicado
-    currentSpans = Array.from(el.querySelectorAll('.word-span'));
+    // Tenta pegar spans de palavras individuais
+    currentSpans = Array.from(el.querySelectorAll('.word-span')); 
     
-    // Se não tiver spans (ex: modo leitura simples), usa o texto todo
-    let textToRead = "";
-    if (currentSpans.length > 0) {
-        textToRead = currentSpans.map(s => s.innerText).join(" ");
-    } else {
-        textToRead = el.innerText;
-        // Se for bloco unico, não tem como destacar palavra por palavra, destaca tudo
-        el.classList.add('word-active');
-    }
+    // Se não achou spans (ex: modo leitura simples), tenta spans de frases
+    if (currentSpans.length === 0) currentSpans = Array.from(el.querySelectorAll('.k-sent'));
     
-    speak(textToRead);
+    // Se ainda vazio, usa o próprio elemento clicado como bloco único
+    if (currentSpans.length === 0) currentSpans = [el];
+    
+    let textToRead = el.innerText; 
+    speak(textToRead); 
 }
 
-function wordClick(e, word) { e.stopPropagation(); if(synthesis.speaking) synthesis.cancel(); openAdd(word); }
+function wordClick(e, word) { e.stopPropagation(); if(curAud){ curAud.pause(); } openAdd(word); }
 function openAdd(w){ document.getElementById("mod").style.display="block"; const inp = document.getElementById("fIn"); inp.value = w; inp.removeAttribute('readonly'); fetchTranslation(w); }
 function fetchTranslation(w) { fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>document.getElementById('bIn').value=d.t); }
 function refreshTrans() { const w = document.getElementById("fIn").value; fetchTranslation(w); }
@@ -835,8 +867,7 @@ function nextWord() { if(wordPool.length > 0) { const w = wordPool[Math.floor(Ma
 
 function toggleShadow(btn, e) {
     e.stopPropagation();
-    if(synthesis.speaking) synthesis.cancel(); 
-    document.getElementById('playBtn').innerText='▶';
+    if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
     
     if (btn.classList.contains('shadow-recording')) {
         if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
@@ -1008,7 +1039,7 @@ function reveal(el, word) {
 {% endif %}
 
 <div class="fab" onclick="openManualAdd()">➕</div>
-<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" oninput="rate=this.value; if(synthesis.speaking){synthesis.cancel(); speak(utterance.text);}"></div></div>
+<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" oninput="rate=this.value; if(curAud){curAud.playbackRate=this.value;}"></div></div>
 <div id="mod" class="modal" style="display:none;"><form action="/adicionar_vocab" method="POST" onsubmit="submitAjax(event)"><h3 style="margin-top:0">Save to My Vocabulary</h3><div class="modal-actions"><input type="text" id="fIn" name="term" placeholder="Type in PT or EN (Auto-Translate)..." style="width:100%"></div><button class="btn" style="margin-top:10px;">SAVE</button><button type="button" class="btn" style="background:#888;margin-top:10px;" onclick="document.getElementById('mod').style.display='none'">CLOSE</button></form></div>
 </body></html>
 """
