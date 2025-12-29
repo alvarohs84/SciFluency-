@@ -247,23 +247,28 @@ def parse_nbib_bulk(content):
 def format_abstract_smart(text):
     if not text: return ""
     formatted = text
+    # Destaque de seções (Bold)
     sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
     for sec in sections:
         pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
         if pattern.search(formatted):
             formatted = pattern.sub(r"<br><br><b style='color:#2c3e50;'>\1</b>", formatted)
+    
+    # Divisão por sentenças e depois por palavras para o Karaokê
     sentences = re.split(r'(?<=[.!?])\s+', formatted)
     final_html = ""
     for sent in sentences:
         if len(sent.strip()) > 1:
             words_html = ""
             for word in sent.split():
+                # Gera o span para cada palavra para o efeito word-by-word
                 clean_w = re.sub(r"[^\w']", "", word)
                 if clean_w:
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            final_html += f"<span class='k-sent' onclick='prepare(this, \"{sent}\")'>{words_html}</span>"
+            # O bloco da sentença chama o prepare() para o áudio
+            final_html += f"<div class='sentence-block' onclick='prepare(this, {json.dumps(sent)})' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
 # --- ROTAS ---
@@ -402,13 +407,12 @@ def summarizer():
             f = request.files['nbib_file']
             if f.filename:
                 try:
-                    # CORREÇÃO: Lógica para PDF e NBIB
                     if f.filename.lower().endswith('.pdf'):
-                        pdf_text = " ".join([page.extract_text() or "" for page in PdfReader(f).pages])
-                        # Cria um "artigo" único com o conteúdo do PDF
-                        content_to_process = [{"title": f.filename, "abstract": pdf_text}]
+                        # LIMPEZA CRÍTICA: Remove quebras de linha estranhas de PDFs
+                        raw_pdf_text = " ".join([page.extract_text() or "" for page in PdfReader(f).pages])
+                        clean_pdf_text = re.sub(r'\s+', ' ', raw_pdf_text).strip()
+                        content_to_process = [{"title": f.filename, "abstract": clean_pdf_text}]
                     else:
-                        # Lógica original para NBIB/Text
                         content = f.read().decode('utf-8', errors='replace')
                         all_articles = parse_nbib_bulk(content)
                         content_to_process = all_articles[:5] 
@@ -425,7 +429,6 @@ def summarizer():
                 clean_text_for_api = re.sub(r'<.*?>', ' ', formatted_html)
                 try:
                     time.sleep(0.5)
-                    # Limita a 4500 chars para não estourar o Google Translate
                     translation = GoogleTranslator(source='en', target='pt').translate(clean_text_for_api[:4500])
                 except: translation = "Tradução indisponível."
                 batch_results.append({
@@ -679,7 +682,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (SUMMARIZER PDF HABILITADO) ---
+# --- FRONTEND (SUMMARIZER PDF APRIMORADO) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -776,7 +779,7 @@ async function speak(txt){
 }
 
 function togglePlay(){ if(!curAud) return; const btn=document.getElementById('playBtn'); if(curAud.paused){ curAud.play(); btn.innerText='⏸'; loop(); } else{ curAud.pause(); btn.innerText='▶'; cancelAnimationFrame(aFrm); } }
-function prepare(el,txt){ if(curAud){curAud.pause(); cancelAnimationFrame(aFrm);} document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); sentSpans = Array.from(el.querySelectorAll('.k-sent')); let textToRead = txt; if(sentSpans.length > 0) { textToRead = sentSpans.map(s => s.innerText).join(" "); } speak(textToRead); }
+function prepare(el,txt){ if(curAud){curAud.pause(); cancelAnimationFrame(aFrm);} document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); sentSpans = Array.from(el.querySelectorAll('.word-span')); let textToRead = txt; if(sentSpans.length > 0) { textToRead = sentSpans.map(s => s.innerText).join(" "); } speak(textToRead); }
 function wordClick(e, word) { e.stopPropagation(); if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; cancelAnimationFrame(aFrm); } openAdd(word); }
 function loop(){ if(!curAud || curAud.paused) return; if(curAud.duration > 0){ const p = curAud.currentTime / curAud.duration; let idx = cumWeights.findIndex(t => t >= p); if(idx === -1) idx = cumWeights.length - 1; document.querySelectorAll('.word-active').forEach(w => w.classList.remove('word-active')); if(sentSpans[idx]) sentSpans[idx].classList.add('word-active'); } aFrm = requestAnimationFrame(loop); }
 function openAdd(w){ document.getElementById("mod").style.display="block"; const inp = document.getElementById("fIn"); inp.value = w; inp.removeAttribute('readonly'); fetchTranslation(w); }
@@ -910,7 +913,7 @@ function reveal(el, word) {
 {% elif mode == 'search' %}
 <div class="container"><h3>PubMed Search</h3><form action="/search" method="POST"><div class="checker-box"><input type="text" name="query" placeholder="e.g. 'Cancer AND Therapy'..." value="{{query}}"><input type="hidden" name="retstart" value="0"><button class="btn" style="width:100%;">SEARCH</button></div></form>{% if results %}<p style="text-align:center; color:var(--subtext); font-size:0.9rem;">Encontrados {{total_count}} resultados</p>{% for r in results %}<div class="card" style="margin-top:15px;"><b style="color:var(--accent);">{{r.journal}}</b><h4>{{r.title}}</h4><div style="max-height:80px; overflow:hidden; text-overflow:ellipsis; color:var(--subtext); font-size:0.9rem;">{{r.abstract}}</div><div style="display:flex; gap:10px; margin-top:10px;"><form action="/summarizer" method="POST" style="flex:1;"><input type="hidden" name="text_input" value="{{r.abstract}}"><input type="hidden" name="title_input" value="{{r.title}}"><button class="btn" style="background:#27ae60; width:100%; font-size:0.8rem;">⚡ PROCESS ABSTRACT</button></form><form action="/save_article" method="POST" style="flex:1;"><input type="hidden" name="abstract" value="{{r.abstract}}"><input type="hidden" name="title" value="{{r.title}}"><button class="btn" style="background:#3498db; width:100%; font-size:0.8rem;">💾 SAVE TO LIBRARY</button></form></div></div>{% endfor %}<div style="display:flex; justify-content:space-between; margin-top:20px; gap:10px;">{% if retstart > 0 %}<form action="/search" method="POST" style="flex:1;"><input type="hidden" name="query" value="{{query}}"><input type="hidden" name="retstart" value="{{retstart - 5}}"><button class="btn" style="background:#95a5a6; width:100%;">⬅ Anterior</button></form>{% endif %}{% if (retstart + 5) < total_count %}<form action="/search" method="POST" style="flex:1;"><input type="hidden" name="query" value="{{query}}"><input type="hidden" name="retstart" value="{{retstart + 5}}"><button class="btn" style="width:100%;">Próxima ➡</button></form>{% endif %}</div>{% endif %}</div>
 {% elif mode == 'summarizer' %}
-<div class="container"><h3>Smart Summarizer</h3><form action="/summarizer" method="POST" enctype="multipart/form-data"><div class="card"><label class="checker-label">Upload Batch (NBIB/RIS) or PDF</label><input type="file" name="nbib_file" accept=".nbib,.ris,.txt,.pdf" style="margin-bottom:10px;"><p style="color:var(--subtext); font-size:0.8rem; margin-top:0;">⚠️ Warning: Limits to first 5 articles.</p><div class="arrow-separator" style="font-size:1rem; margin:10px 0;">OR</div><label class="checker-label">Paste Text</label><textarea name="text_input" class="text-area-box" style="height:100px;" placeholder="Paste text here..."></textarea><button class="btn" style="width:100%; margin-top:15px;">PROCESS</button></div></form>{% if batch_results %}{% for res in batch_results %}<div class="card" style="margin-top:20px;"><button id="modeBtn" class="btn" style="width:100%; margin-bottom:10px; background:#3498db;" onclick="toggleMiner()">📖 READING MODE</button><h4 style="margin:0 0 10px 0;">{{res.title}}</h4><div class="sentence-block" style="border:none; padding:0; line-height:1.6;" onclick='prepare(this, {{ res.clean_text|tojson }})'>{{ res.formatted_html | safe }}<p style="color:var(--accent); font-weight:bold; margin-top:10px; cursor:pointer; text-align:center;">▶ TAP TO READ & LISTEN</p></div><button id="quizBtn_{{loop.index}}" class="btn" style="width:100%; margin-top:15px; background:#8e44ad;" onclick='loadQuiz("{{loop.index}}", {{ res.clean_text|tojson }})'>🧩 TEST ME (Generate Quiz)</button><div id="quizBox_{{loop.index}}" style="display:none; margin-top:15px; padding:15px; background:var(--input); border:2px dashed #8e44ad; border-radius:10px; line-height:2;"></div><details style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;"><summary style="cursor:pointer; color:var(--accent); font-weight:bold;">🇧🇷 Ver Tradução</summary><p style="margin-top:10px; color:var(--text); line-height:1.5;">{{ res.translation }}</p></details></div>{% endfor %}{% endif %}</div>
+<div class="container"><h3>Smart Summarizer</h3><form action="/summarizer" method="POST" enctype="multipart/form-data"><div class="card"><label class="checker-label">Upload Batch (NBIB/RIS) or PDF</label><input type="file" name="nbib_file" accept=".nbib,.ris,.txt,.pdf" style="margin-bottom:10px;"><p style="color:var(--subtext); font-size:0.8rem; margin-top:0;">⚠️ Warning: Limits to first 5 articles.</p><div class="arrow-separator" style="font-size:1rem; margin:10px 0;">OR</div><label class="checker-label">Paste Text</label><textarea name="text_input" class="text-area-box" style="height:100px;" placeholder="Paste text here..."></textarea><button class="btn" style="width:100%; margin-top:15px;">PROCESS</button></div></form>{% if batch_results %}{% for res in batch_results %}<div class="card" style="margin-top:20px;"><button id="modeBtn" class="btn" style="width:100%; margin-bottom:10px; background:#3498db;" onclick="toggleMiner()">📖 READING MODE</button><h4 style="margin:0 0 10px 0;">{{res.title}}</h4><p style="color:var(--subtext);font-size:0.9rem;">Tap any sentence to Read & Practice (Karaoke Enabled)</p><div class="sentence-block" style="border:none; padding:0; line-height:1.6;">{{ res.formatted_html | safe }}</div><button id="quizBtn_{{loop.index}}" class="btn" style="width:100%; margin-top:15px; background:#8e44ad;" onclick='loadQuiz("{{loop.index}}", {{ res.clean_text|tojson }})'>🧩 TEST ME (Generate Quiz)</button><div id="quizBox_{{loop.index}}" style="display:none; margin-top:15px; padding:15px; background:var(--input); border:2px dashed #8e44ad; border-radius:10px; line-height:2;"></div><details style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;"><summary style="cursor:pointer; color:var(--accent); font-weight:bold;">🇧🇷 Ver Tradução</summary><p style="margin-top:10px; color:var(--text); line-height:1.5;">{{ res.translation }}</p></details></div>{% endfor %}<div style="text-align:center; margin-top:20px; color:var(--subtext);"><small>Use the audio player below to pause/speed up ⬇️</small></div>{% endif %}</div>
 {% elif mode == 'study_play' %}
 <div class="container">{% if card %}<div class="card" style="text-align:center;padding:30px;"><small>{{deck.name}}</small>{% if card.is_cloze %}<h1 id="wordTxt" class="cloze-content">{{ card.cloze_hint }}</h1><p style="color:var(--subtext);font-style:italic;">Complete the sentence</p>{% else %}<h1 id="wordTxt">{{card.front}}</h1><p style="color:var(--accent);font-family:monospace;">{{card.ipa}}</p>{% endif %}<div id="ansBox" style="display:none;margin-top:20px;border-top:1px dashed #ccc;padding-top:20px;">{% if card.is_cloze %}<h2 style="color:#2ecc71;">{{card.front}}</h2><small style="display:block;margin-top:5px;color:var(--subtext);">Translation: {{card.back}}</small>{% else %}<h2 style="color:#2ecc71;">{{card.back}}</h2>{% endif %}{% if card.context %}<div style="margin-top:10px; padding:10px; background:#e1f5fe; border-radius:8px; font-style:italic; font-size:0.9rem;">💡 "{{card.context}}"</div>{% endif %}<div style="display:flex; gap:10px; margin-top:20px;"><button class="srs-btn" style="background:var(--hard);" onclick="submitRating('hard', '{{deck.id}}', '{{card.front}}')">Hard</button><button class="srs-btn" style="background:var(--med);" onclick="submitRating('medium', '{{deck.id}}', '{{card.front}}')">Good</button><button class="srs-btn" style="background:var(--easy);" onclick="submitRating('easy', '{{deck.id}}', '{{card.front}}')">Easy</button></div></div></div><div style="display:flex;flex-direction:column;gap:10px;"><button class="btn" onclick="speak('{{card.front}}')">📢 LISTEN</button><button class="btn" style="background:#34495e" onclick="document.getElementById('ansBox').style.display='block'">SHOW ANSWER</button><a href="/jogar/{{deck.id}}" class="btn" style="background:#f1c40f; color:#333; text-align:center; text-decoration:none;">⏭ Pular / Próxima</a></div>{% else %}<div class="card" style="text-align:center;padding:40px;"><h3>🎉 All caught up!</h3><p>No due cards.</p><a href="/add_random/{{deck.id}}" class="btn" style="background:#ff9f43;">🎲 ADD RANDOM</a></div>{% endif %}</div>
 {% elif mode == 'pronunciation' %}
