@@ -265,7 +265,7 @@ def format_abstract_smart(text):
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            # Usamos prepare(this) sem argumentos. O JS pega o texto do elemento.
+            # Sem atributos conflitantes, apenas o evento
             final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
@@ -311,7 +311,6 @@ def tts_route():
         accent = request.args.get('accent', 'com')
     fp = BytesIO()
     try: 
-        # OBTEM AUDIO DO GOOGLE (Servidor)
         gTTS(text=text, lang='en', tld=accent).write_to_fp(fp)
         fp.seek(0)
         return send_file(fp, mimetype='audio/mpeg')
@@ -680,7 +679,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (HÍBRIDO: AUDIO SERVER + JS TIMER) ---
+# --- FRONTEND (HÍBRIDO: AUDIO SERVER + JS TIMER PROPORCIONAL) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -748,7 +747,7 @@ body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radi
 <script>
 let curAud = null;
 let currentSpans = [];
-let karaokeInterval = null;
+let karaokeTimeout = null;
 let rate = 1.0;
 let acc = 'com'; 
 let shadowRec = null; 
@@ -759,10 +758,10 @@ function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
-// --- ESTRATÉGIA HÍBRIDA: ÁUDIO DO SERVIDOR + KARAOKE MATEMÁTICO ---
+// --- ESTRATÉGIA HÍBRIDA COM TIMING PONDERADO ---
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
-    if(karaokeInterval) clearInterval(karaokeInterval);
+    if(karaokeTimeout) clearTimeout(karaokeTimeout);
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
 
     const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
@@ -783,33 +782,38 @@ async function speak(text){
         curAud.onloadedmetadata = () => { 
             btn.innerText='⏸';
             curAud.play();
-            // Inicia o Karaoke Estimado
-            startEstimatedKaraoke(curAud.duration);
+            // Inicia o Karaoke Ponderado
+            startWeightedKaraoke(curAud.duration);
         }; 
         
         curAud.onended = () => { 
             btn.innerText='▶'; 
-            if(karaokeInterval) clearInterval(karaokeInterval);
+            if(karaokeTimeout) clearTimeout(karaokeTimeout);
             document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
         }; 
         
     } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
 }
 
-function startEstimatedKaraoke(duration) {
+function startWeightedKaraoke(duration) {
     if (currentSpans.length === 0) return;
     
-    // Tempo total em ms dividido pelo número de palavras
-    // Ajustado pela velocidade de reprodução (rate)
+    // Calcula o peso total (número de caracteres)
+    let weights = currentSpans.map(span => span.innerText.length);
+    let totalWeight = weights.reduce((a, b) => a + b, 0);
+    
+    // Tempo total em ms ajustado pela velocidade
     let totalTimeMs = (duration * 1000) / rate;
-    let timePerWord = totalTimeMs / currentSpans.length;
+    
+    // Quanto tempo vale 1 caractere?
+    let timePerWeight = totalTimeMs / totalWeight;
     
     let index = 0;
     
-    // Função para acender a próxima palavra
-    const tick = () => {
+    // Função recursiva para acender a próxima palavra
+    function nextWord() {
         if (index >= currentSpans.length) {
-            clearInterval(karaokeInterval);
+            clearTimeout(karaokeTimeout);
             return;
         }
         
@@ -818,12 +822,17 @@ function startEstimatedKaraoke(duration) {
         
         // Adiciona destaque atual
         currentSpans[index].classList.add('word-active');
+        
+        // Calcula quanto tempo essa palavra deve ficar acesa
+        // (comprimento da palavra * tempo por caractere)
+        let delay = weights[index] * timePerWeight;
+        
         index++;
-    };
+        karaokeTimeout = setTimeout(nextWord, delay);
+    }
     
-    // Executa imediatamente e depois a cada intervalo
-    tick();
-    karaokeInterval = setInterval(tick, timePerWord);
+    // Começa
+    nextWord();
 }
 
 function togglePlay(){ 
@@ -832,26 +841,19 @@ function togglePlay(){
     if(curAud.paused){ 
         curAud.play(); 
         btn.innerText='⏸';
-        // Recalcular karaoke seria complexo aqui, então simplificamos:
-        // Se pausar, o karaoke pode dessincronizar levemente nesta versão simples
     } else{ 
         curAud.pause(); 
         btn.innerText='▶'; 
-        if(karaokeInterval) clearInterval(karaokeInterval);
+        if(karaokeTimeout) clearTimeout(karaokeTimeout);
     } 
 }
 
 function prepare(el){ 
-    if(curAud){curAud.pause(); if(karaokeInterval) clearInterval(karaokeInterval);} 
+    if(curAud){curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout);} 
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
     
-    // Tenta pegar spans de palavras individuais
     currentSpans = Array.from(el.querySelectorAll('.word-span')); 
-    
-    // Se não achou spans (ex: modo leitura simples), tenta spans de frases
     if (currentSpans.length === 0) currentSpans = Array.from(el.querySelectorAll('.k-sent'));
-    
-    // Se ainda vazio, usa o próprio elemento clicado como bloco único
     if (currentSpans.length === 0) currentSpans = [el];
     
     let textToRead = el.innerText; 
@@ -868,7 +870,6 @@ function nextWord() { if(wordPool.length > 0) { const w = wordPool[Math.floor(Ma
 function toggleShadow(btn, e) {
     e.stopPropagation();
     if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
-    
     if (btn.classList.contains('shadow-recording')) {
         if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
         btn.classList.remove('shadow-recording');
