@@ -265,8 +265,8 @@ def format_abstract_smart(text):
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            # O texto da frase é passado via atributo data-text para garantir integridade
-            final_html += f"<div class='sentence-block' onclick='prepare(this)' data-text='{sent.replace(chr(39), &#39;&quot;&#39;)}' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
+            # CORREÇÃO AQUI: Removemos o atributo problemático data-text
+            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
 # --- ROTAS ---
