@@ -1,21 +1,3 @@
-# ...
-
-@app.route('/traduzir_palavra')
-def traduzir():
-    w = request.args.get('w', '')
-    # Traduz
-    try: t = GoogleTranslator(source='en', target='pt').translate(w)
-    except: t = "..."
-    # Gera Fonética
-    i = utils.get_phonetic(w)
-    return jsonify({"t": t, "ipa": i})
-
-@app.route('/adicionar_vocab', methods=['POST'])
-def add_vocab():
-    term = request.form.get('term')
-    # Gera IPA antes de salvar
-    ipa_text = utils.get_phonetic(term)
-    
 import os
 import re
 import uuid
@@ -38,7 +20,7 @@ app = Flask(__name__)
 
 # --- CONFIGURAÇÃO DO BANCO DE DADOS ---
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///scifluency.db')
-if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
+if app.config['SQLALCHEMY_DATABASE_URI'] and app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -247,7 +229,7 @@ def traduzir():
     try: t = GoogleTranslator(source='en', target='pt').translate(w)
     except: t = "..."
     
-    # Gera IPA (Novo!)
+    # Gera IPA
     ipa_text = utils.get_phonetic(w)
     
     return jsonify({"t": t, "ipa": ipa_text})
@@ -256,7 +238,7 @@ def traduzir():
 def add_vocab():
     term = request.form.get('term')
     
-    # Gera IPA antes de salvar (Novo!)
+    # Gera IPA antes de salvar
     ipa_text = utils.get_phonetic(term)
     
     db.session.add(Card(
