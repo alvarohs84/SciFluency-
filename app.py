@@ -36,10 +36,14 @@ APP_NAME = "SciFluency Research OS"
 def index():
     # Cria projeto padrão se não existir
     if not Project.query.first():
-        db.create_all()
-        db.session.add(Project(id="thesis", title="Meu Projeto de Pesquisa", target_journal="Nature/Science"))
-        db.session.add(Deck(id="my_vocab", name="Vocabulário Acadêmico", icon="🎓"))
-        db.session.commit()
+        try:
+            db.session.add(Project(id="thesis", title="Meu Projeto de Pesquisa", target_journal="Nature/Science"))
+            # Verifica se o deck existe antes de criar
+            if not Deck.query.get("my_vocab"):
+                db.session.add(Deck(id="my_vocab", name="Vocabulário Acadêmico", icon="🎓"))
+            db.session.commit()
+        except:
+            db.session.rollback()
     
     proj = Project.query.first()
     # Contagem de Referências
@@ -144,9 +148,34 @@ def add_vocab():
     db.session.commit()
     return jsonify({"status": "ok"})
 
-# Inicialização
-with app.app_context():
-    db.create_all()
+# --- AUTO-REPARO DO BANCO DE DADOS ---
+def fix_database_schema():
+    """Verifica e corrige colunas faltantes no banco de dados"""
+    with app.app_context():
+        try:
+            # 1. Cria tabelas novas (Project, Reference, etc)
+            db.create_all()
+            
+            # 2. Força a adição da coluna 'ease_factor' se ela não existir
+            # Isso resolve o erro 'UndefinedColumn'
+            with db.engine.connect() as conn:
+                # Tenta selecionar a coluna para ver se existe
+                try:
+                    conn.execute(text("SELECT ease_factor FROM card LIMIT 1"))
+                except:
+                    # Se der erro, é porque não existe. Adiciona.
+                    # A sintaxe varia entre SQLite e Postgres, este comando tenta ser compatível ou foca no Postgres
+                    try:
+                        conn.execute(text("ALTER TABLE card ADD COLUMN ease_factor FLOAT DEFAULT 2.5"))
+                        conn.commit()
+                        print("✅ Coluna 'ease_factor' adicionada com sucesso.")
+                    except Exception as e:
+                        print(f"⚠️ Aviso na migração: {e}")
+        except Exception as e:
+            print(f"Erro geral no banco: {e}")
+
+# Executa o reparo ao iniciar
+fix_database_schema()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
