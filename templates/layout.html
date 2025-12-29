@@ -64,6 +64,11 @@ input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px soli
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 .shadow-btn { float: right; margin-left: 10px; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: #ecf0f1; color: #333; }
 .shadow-recording { background: #e74c3c !important; color: white; animation: pulse 1.5s infinite; }
+/* QUIZ STYLES */
+.quiz-hidden { background: #f1c40f; color: transparent; border-radius: 4px; padding: 0 5px; cursor: pointer; user-select: none; border-bottom: 2px solid #d35400; font-size: 0.9em; min-width: 30px; display: inline-block; text-align: center; }
+.quiz-hidden:hover { background: #f39c12; }
+.quiz-revealed { background: transparent; color: #2ecc71; font-weight: bold; border-bottom: none; animation: pop 0.3s ease; }
+@keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 </style>
 <script>
 // --- ÁUDIO & KARAOKÊ (HARDWARE SYNC + NEURAL) ---
@@ -212,21 +217,73 @@ function saveFromDict() {
     });
 }
 
-// --- SCI-WRITER LOGIC ---
+// --- SCI-WRITER LOGIC (CORRIGIDO) ---
 function toggleConnectors(id) {
     document.querySelectorAll('.connector-list').forEach(l => l.style.display = 'none');
-    const list = document.getElementById(id);
-    if(list) list.style.display = 'block';
+    if (id) {
+        const list = document.getElementById(id);
+        if(list) list.style.display = 'block';
+    }
 }
 function insertText(text) {
     const area = document.getElementById('writerArea');
-    area.value += text + " ";
+    
+    // Insere exatamente onde o cursor está
+    if (area.selectionStart || area.selectionStart == '0') {
+        var startPos = area.selectionStart;
+        var endPos = area.selectionEnd;
+        area.value = area.value.substring(0, startPos)
+            + text + " "
+            + area.value.substring(endPos, area.value.length);
+        
+        // Reposiciona o cursor após o texto inserido
+        area.selectionStart = startPos + text.length + 1;
+        area.selectionEnd = startPos + text.length + 1;
+    } else {
+        area.value += text + " ";
+    }
+    
     toggleConnectors(null); // Fecha lista
-    area.focus();
+    area.focus(); // Devolve o foco
 }
 
 function openManualAdd() { document.getElementById("mod").style.display="block"; document.getElementById("fIn").value=""; }
 function toggleMiner() { document.body.classList.toggle('mode-mine'); } // Alterna cursor
+function submitAjax(e) {
+    e.preventDefault();
+    const f = e.target;
+    const btn = f.querySelector('button');
+    const originalText = btn.innerText;
+    btn.innerText = "Saving...";
+    fetch('/adicionar_vocab', {
+        method: 'POST',
+        body: new URLSearchParams(new FormData(f)) + '&ajax=1',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    }).then(r=>r.json()).then(d=>{
+        btn.innerText = "Saved! ✅";
+        setTimeout(()=>{
+            document.getElementById('mod').style.display='none';
+            btn.innerText = originalText;
+        }, 800);
+    });
+}
+
+function loadQuiz(containerId, textContent) {
+    const btn = document.getElementById('quizBtn_' + containerId);
+    btn.innerText = "⏳ Generating...";
+    fetch('/get_quiz', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'text=' + encodeURIComponent(textContent)
+    }).then(r => r.json()).then(data => {
+        const box = document.getElementById('quizBox_' + containerId);
+        box.innerHTML = data.html;
+        box.style.display = 'block';
+        box.scrollIntoView({behavior: "smooth"});
+        btn.innerText = "🔄 Regenerate Quiz";
+    });
+}
+function reveal(el, word) { el.classList.remove('quiz-hidden'); el.classList.add('quiz-revealed'); el.innerText = word; }
 </script>
 </head>
 <body>

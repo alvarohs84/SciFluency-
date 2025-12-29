@@ -6,71 +6,64 @@ from io import BytesIO
 from collections import Counter
 from deep_translator import GoogleTranslator
 from pypdf import PdfReader
-from gtts import gTTS
 from Bio import Entrez
 import eng_to_ipa as ipa
-import time
 
-# --- CONFIGURAÇÕES ---
-Entrez.email = "researcher@example.com"
-Entrez.tool = "SciFluencyResearch"
-
-# --- DADOS CONSTANTES ---
-VOICE_MAPPING = {
-    'com': 'en-US-ChristopherNeural',
-    'co.uk': 'en-GB-RyanNeural',
-    'pt': 'pt-BR-AntonioNeural'
-}
-
+# --- BANCO DE FRASES ACADÊMICAS (EXPANDIDO) ---
 ACADEMIC_PHRASEBANK = {
-    "1. Introduction & Context": [
-        {"en": "Recent developments in this field have heightened the need for...", "pt": "Desenvolvimentos recentes neste campo aumentaram a necessidade de..."},
-        {"en": "Currently, there is a paucity of data regarding...", "pt": "Atualmente, há escassez de dados sobre..."},
-        {"en": "This study aims to investigate the relationship between...", "pt": "Este estudo visa investigar a relação entre..."},
-        {"en": "Previous research has established that...", "pt": "Pesquisas anteriores estabeleceram que..."}
+    "1. Start": [
+        {"en": "The primary objective of this study is to...", "pt": "O objetivo principal deste estudo é..."},
+        {"en": "Recent developments have heightened the need for...", "pt": "Desenvolvimentos recentes aumentaram a necessidade de..."},
+        {"en": "Little is known about...", "pt": "Pouco se sabe sobre..."},
+        {"en": "This paper addresses the issue of...", "pt": "Este artigo aborda a questão de..."}
     ],
-    "2. Methods & Materials": [
-        {"en": "Data were collected using a semi-structured interview guide.", "pt": "Os dados foram coletados usando um roteiro de entrevista semiestruturado."},
-        {"en": "The participants were divided into two groups.", "pt": "Os participantes foram divididos em dois grupos."},
-        {"en": "Statistical analysis was performed using SPSS software.", "pt": "A análise estatística foi realizada usando o software SPSS."}
+    "2. Contrast": [
+        {"en": "However, this approach has limitations.", "pt": "No entanto, esta abordagem tem limitações."},
+        {"en": "On the other hand,", "pt": "Por outro lado,"},
+        {"en": "Conversely,", "pt": "Inversamente,"},
+        {"en": "In contrast to earlier findings,", "pt": "Em contraste com achados anteriores,"},
+        {"en": "While preliminary results suggest..., it is unclear...", "pt": "Embora resultados preliminares sugiram..., não está claro..."}
     ],
-    "3. Results & Findings": [
-        {"en": "There was a significant correlation between...", "pt": "Houve uma correlação significativa entre..."},
-        {"en": "The results indicate that...", "pt": "Os resultados indicam que..."}
+    "3. Add": [
+        {"en": "Furthermore,", "pt": "Além disso,"},
+        {"en": "Moreover,", "pt": "Além do mais,"},
+        {"en": "In addition to...", "pt": "Em adição a..."},
+        {"en": "Similarly,", "pt": "Similarmente,"},
+        {"en": "Another key factor is...", "pt": "Outro fator chave é..."}
     ],
-    "4. Discussion & Argumentation": [
-        {"en": "These findings suggest that...", "pt": "Esses achados sugerem que..."},
-        {"en": "However, some limitations should be noted.", "pt": "No entanto, algumas limitações devem ser notadas."}
+    "4. Cause": [
+        {"en": "Therefore,", "pt": "Portanto,"},
+        {"en": "Consequently,", "pt": "Consequentemente,"},
+        {"en": "As a result,", "pt": "Como resultado,"},
+        {"en": "This suggests that...", "pt": "Isso sugere que..."}
     ],
-    "5. Conclusion": [
-        {"en": "In conclusion, this study demonstrates that...", "pt": "Em conclusão, este estudo demonstra que..."},
-        {"en": "The evidence from this study suggests...", "pt": "As evidências deste estudo sugerem..."}
+    "5. Methods": [
+        {"en": "Data were collected using...", "pt": "Os dados foram coletados usando..."},
+        {"en": "The participants were divided into...", "pt": "Os participantes foram divididos em..."},
+        {"en": "Statistical analysis was performed using...", "pt": "A análise estatística foi feita usando..."}
+    ],
+    "6. End": [
+        {"en": "In conclusion,", "pt": "Em conclusão,"},
+        {"en": "These findings highlight the importance of...", "pt": "Esses achados destacam a importância de..."},
+        {"en": "Future research should focus on...", "pt": "Pesquisas futuras devem focar em..."}
     ]
 }
 
 ACADEMIC_REPLACEMENTS = {
     "big": "substantial", "huge": "significant", "bad": "detrimental",
-    "good": "beneficial", "think": "hypothesize", "get": "obtain",
-    "make": "generate", "show": "demonstrate", "use": "utilize",
-    "really": "significantly", "very": "highly", "look at": "examine",
-    "prove": "validate", "change": "alter", "stop": "cease"
+    "good": "beneficial", "think": "hypothesize", "get": "obtain", "use": "utilize",
+    "look at": "examine", "show": "demonstrate", "prove": "validate"
 }
+MORPHOLOGY_DB = {"un": "Not (Não)", "re": "Again (Novamente)", "itis": "Inflammation", "logy": "Study of"}
 
-MANUAL_DICT = {
-    "rins": "Kidneys", "rim": "Kidney", "pulmão": "Lung", "pulmoes": "Lungs",
-    "coração": "Heart", "figado": "Liver", "cerebro": "Brain",
-    "metástase": "Metastasis", "metastases": "Metastases", "casa": "House"
-}
+# --- FUNÇÕES TÉCNICAS ---
+VOICE_MAPPING = {'com': 'en-US-ChristopherNeural', 'co.uk': 'en-GB-RyanNeural', 'pt': 'pt-BR-AntonioNeural'}
 
-MORPHOLOGY_DB = {"un": "Not (Não)", "re": "Again (Novamente)", "itis": "Inflammation"}
-
-# --- FUNÇÕES ---
 async def generate_neural_audio(text, voice):
     communicate = edge_tts.Communicate(text, voice)
     audio_data = BytesIO()
     async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_data.write(chunk["data"])
+        if chunk["type"] == "audio": audio_data.write(chunk["data"])
     audio_data.seek(0)
     return audio_data
 
@@ -80,126 +73,61 @@ def get_audio_sync(text, accent='com'):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         return loop.run_until_complete(generate_neural_audio(text, voice))
-    except Exception as e:
-        print(f"Erro Neural TTS: {e}")
-        return None
+    except: return None
 
 def get_phonetic(text):
     if not text: return ""
-    words = text.split()
-    ipa_result = []
-    for word in words:
-        clean = re.sub(r'[^\w\s]', '', word)
-        if not clean: 
-            ipa_result.append(word); continue
-        try:
-            generated = ipa.convert(clean)
-            if "*" in generated: ipa_result.append(clean)
-            else: ipa_result.append(generated)
-        except: ipa_result.append(clean)
-    return "/" + " ".join(ipa_result) + "/"
+    return "/" + " ".join([ipa.convert(re.sub(r'[^\w\s]', '', w)) if "*" not in ipa.convert(re.sub(r'[^\w\s]', '', w)) else w for w in text.split()]) + "/"
 
 def process_language_logic(text):
-    if not text: return None, None
-    clean_text = text.strip()
-    lower_text = clean_text.lower()
-    if lower_text in MANUAL_DICT: return MANUAL_DICT[lower_text], clean_text
+    clean = text.strip()
     try:
-        trans_en = GoogleTranslator(source='pt', target='en').translate(clean_text)
-        if trans_en and trans_en.lower() != lower_text: return trans_en, clean_text
-        trans_pt = GoogleTranslator(source='en', target='pt').translate(clean_text)
-        return clean_text, trans_pt
-    except: return clean_text, "Error"
+        en = GoogleTranslator(source='pt', target='en').translate(clean)
+        if en.lower() != clean.lower(): return en, clean
+        pt = GoogleTranslator(source='en', target='pt').translate(clean)
+        return clean, pt
+    except: return clean, "Error"
 
 def improve_english_text(text):
-    if not text: return ""
     try:
-        pt = GoogleTranslator(source='en', target='pt').translate(text)
-        fixed = GoogleTranslator(source='pt', target='en').translate(pt)
-    except: fixed = text
-    for s, a in ACADEMIC_REPLACEMENTS.items():
-        fixed = re.sub(rf"\b{s}\b", a, fixed, flags=re.IGNORECASE)
-    return fixed
+        fixed = text
+        for s, a in ACADEMIC_REPLACEMENTS.items():
+            fixed = re.sub(rf"\b{s}\b", a, fixed, flags=re.IGNORECASE)
+        return fixed
+    except: return text
 
 def generate_smart_quiz(text):
-    if not text: return ""
     words = text.split()
     output = []
-    ignore = {"the","and","of","to","in","is","that","for","with","was","as","are","this","from","by"}
-    candidates = []
     for i, w in enumerate(words):
-        clean = re.sub(r'[^\w]', '', w).lower()
-        if len(clean) > 4 and clean not in ignore:
-            candidates.append(i)
-    if candidates:
-        to_hide = set(random.sample(candidates, k=max(1, int(len(candidates) * 0.25))))
-    else:
-        to_hide = set()
-    for i, w in enumerate(words):
-        if i in to_hide:
-            output.append(f"<span class='quiz-hidden' onclick='reveal(this, \"{w}\")'>[ ? ]</span>")
-        else:
-            output.append(w)
+        if len(w) > 4 and i % 4 == 0: output.append(f"<span class='quiz-hidden' onclick='reveal(this, \"{w}\")'>[ ? ]</span>")
+        else: output.append(w)
     return " ".join(output)
 
 def parse_ris_nbib(content):
-    text = ""
-    for line in content.split('\n'):
-        line = line.strip()
-        if line.startswith(('TI', 'T1', 'AB')): parts = line.split('-', 1); 
-        if len(parts) > 1: text += parts[1].strip() + "\n\n"
-    return text
+    return re.sub(r'\n', ' ', content)
 
 def get_top_keywords(text):
     words = re.findall(r'\b[a-zA-Z]{5,}\b', text.lower())
-    stop = {"the","and","of","to","in","is","that","for","with","was","as","are","this","from","which", "study", "results", "using", "between", "during"}
-    return Counter([w for w in words if w not in stop]).most_common(80)
+    return Counter(words).most_common(20)
 
 def parse_nbib_bulk(content):
+    # Lógica de parser simplificada
     articles = []
-    current = {"title": "No Title", "abstract": ""}
-    lines = content.replace('\r', '').split('\n')
-    last_tag = None
-    for line in lines:
-        stripped_line = line.strip()
-        if not stripped_line: continue
-        if line.startswith("PMID-") or line.startswith("PMID -"):
-            if current["abstract"] and len(current["abstract"]) > 50: articles.append(current)
-            current = {"title": "No Title", "abstract": ""}
-            last_tag = "PMID"
-        elif line.startswith("TI  - "):
-            current["title"] = line[6:].strip()
-            last_tag = "TI"
-        elif line.startswith("AB  - "):
-            current["abstract"] = line[6:].strip()
-            last_tag = "AB"
-        elif line.startswith("      ") and last_tag == "AB":
-            current["abstract"] += " " + line.strip()
-        elif line.startswith("      ") and last_tag == "TI":
-            current["title"] += " " + line.strip()
-        elif re.match(r'^[A-Z]{2,4}\s*-', line):
-            last_tag = None
-    if current["abstract"] and len(current["abstract"]) > 50: articles.append(current)
-    return articles
+    lines = content.split('\n')
+    curr = {"title":"", "abstract":""}
+    for l in lines:
+        if l.startswith("TI  - "): curr["title"] = l[6:]
+        if l.startswith("AB  - "): curr["abstract"] += l[6:]
+        if l.startswith("PMID-"): 
+            if curr["title"]: articles.append(curr)
+            curr = {"title":"", "abstract":""}
+    return articles[:10]
 
 def format_abstract_smart(text):
-    if not text: return ""
-    formatted = text
-    formatted = re.sub(r'\s+', ' ', formatted)
-    sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
-    for sec in sections:
-        pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
-        formatted = pattern.sub(r"<br><br><b>\1</b>", formatted)
+    formatted = re.sub(r'\s+', ' ', text)
+    for sec in ["BACKGROUND", "METHODS", "RESULTS", "CONCLUSIONS"]:
+        formatted = re.sub(rf"({sec}[:\s])", r"<br><b>\1</b>", formatted, flags=re.IGNORECASE)
     sentences = re.split(r'(?<=[.!?])\s+', formatted)
-    final_html = ""
-    for sent in sentences:
-        if len(sent.strip()) > 1:
-            words_html = ""
-            for word in sent.split():
-                clean_w = re.sub(r"[^\w]", "", word) 
-                if clean_w:
-                    words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
-                else:
-                    words_html += word + " "
-            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px; padding:8px; cursor:pointer; line-height:1.6;'>{words_html}</div>"
-    return final_html
+    # Gera blocos de frase limpos, sem spans individuais para evitar poluição em PDF
+    return "".join([f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px;padding:5px;cursor:pointer;'>{s}</div>" for s in sentences if s])
