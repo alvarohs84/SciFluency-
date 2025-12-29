@@ -260,18 +260,13 @@ def format_abstract_smart(text):
         if len(sent.strip()) > 1:
             words_html = ""
             for word in sent.split():
-                # --- CORREÇÃO DE ASPAS AQUI ---
-                # Removemos aspas simples da palavra que vai para a função JavaScript
                 clean_w = re.sub(r"[^\w]", "", word) 
-                
                 if clean_w:
-                    # 'onclick' agora usa a palavra limpa sem aspas para não quebrar o HTML
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            
-            # Adiciona o clique de áudio para a frase inteira
-            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
+            # O texto da frase é passado via atributo data-text para garantir integridade
+            final_html += f"<div class='sentence-block' onclick='prepare(this)' data-text='{sent.replace(chr(39), &#39;&quot;&#39;)}' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
 # --- ROTAS ---
@@ -308,6 +303,7 @@ def hub(): return render_template_string(PAGE_LAYOUT, mode='hub', links=RESEARCH
 
 @app.route('/tts', methods=['GET', 'POST'])
 def tts_route():
+    # Rota usada apenas para o Download do Podcast (gTTS)
     if request.method == 'POST':
         text = request.form.get('text', '')
         accent = request.form.get('accent', 'com')
@@ -411,7 +407,6 @@ def summarizer():
             if f.filename:
                 try:
                     if f.filename.lower().endswith('.pdf'):
-                        # LIMPEZA DE PDF PARA TEXTO CONTÍNUO
                         raw_pdf_text = " ".join([page.extract_text() or "" for page in PdfReader(f).pages])
                         clean_pdf_text = re.sub(r'\s+', ' ', raw_pdf_text).strip()
                         content_to_process = [{"title": f.filename, "abstract": clean_pdf_text}]
@@ -685,7 +680,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (JAVASCRIPT E HTML BLINDADOS) ---
+# --- FRONTEND (COM KARAOKÊ NATIVO SINCRONIZADO) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -751,61 +746,87 @@ body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radi
 @keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 </style>
 <script>
-let curAud=null, sentSpans=[], aFrm=null, rate=1.0, acc='com', cumWeights=[];
-let shadowRec=null, shadowChunks=[];
+let synthesis = window.speechSynthesis;
+let utterance = null;
+let currentSpans = [];
+let rate = 1.0;
+let acc = 'com'; 
+let shadowRec = null; 
+let shadowChunks = [];
 
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
-async function speak(txt){ 
-    if(curAud) { curAud.pause(); curAud = null; } 
-    const cleanTxt = txt.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "").replace(/'/g, ""); 
-    const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
-    try { 
-        const response = await fetch('/tts', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=' + acc }); 
-        if (!response.ok) throw new Error('Network response was not ok'); 
-        const blob = await response.blob(); 
-        const url = URL.createObjectURL(blob); 
-        curAud = new Audio(url); 
-        curAud.playbackRate = rate; 
-        
-        curAud.onloadedmetadata = () => { 
-            let totalChars = 0;
-            // Se nao tiver spans (ex: PDF ruim), fallback para o container
-            if (sentSpans.length === 0) sentSpans = [document.body]; // Evita crash
+// --- KARAOKE NATIVO (WEB SPEECH API) ---
+function speak(text){
+    if (synthesis.speaking) synthesis.cancel();
+    
+    utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US'; 
+    utterance.rate = rate; 
+    
+    utterance.onboundary = function(event) {
+        if (event.name === 'word') {
+            document.querySelectorAll('.word-active').forEach(w => w.classList.remove('word-active'));
+            // Tenta achar a palavra correta baseada no índice de caracteres
+            // (Isso funciona melhor se mapearmos spans antes, mas para simplicidade, destacamos por aproximação ou mantemos o foco na frase)
+            // Para "High Precision", precisaríamos mapear charIndex -> spanIndex.
+            // Solução Robusta Simples: Destacar a frase inteira ou tentar achar o span.
             
-            let weights = sentSpans.map(span => { let len = span.innerText.length; totalChars += len; return len; });
-            let current = 0; cumWeights = weights.map(w => { current += w; return (current / totalChars); });
-            curAud.play(); btn.innerText='⏸'; loop(); 
-        }; 
-        curAud.onended = () => { btn.innerText='▶'; cancelAnimationFrame(aFrm); document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); }; 
-    } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
+            // TENTATIVA DE MAPEAR (AVANÇADO)
+            let charIndex = event.charIndex;
+            // Acha qual span contem esse indice
+            let count = 0;
+            for(let span of currentSpans) {
+                let len = span.innerText.length + 1; // +1 pro espaço
+                if (charIndex >= count && charIndex < count + len) {
+                    span.classList.add('word-active');
+                    break;
+                }
+                count += len;
+            }
+        }
+    };
+    
+    utterance.onend = () => { 
+        document.getElementById('playBtn').innerText='▶'; 
+        document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
+    };
+    
+    document.getElementById('playBtn').innerText='⏸';
+    synthesis.speak(utterance);
 }
 
-function togglePlay(){ if(!curAud) return; const btn=document.getElementById('playBtn'); if(curAud.paused){ curAud.play(); btn.innerText='⏸'; loop(); } else{ curAud.pause(); btn.innerText='▶'; cancelAnimationFrame(aFrm); } }
-
-// --- FUNÇÃO DE PREPARAÇÃO ROBUSTA ---
-function prepare(el){ 
-    if(curAud){curAud.pause(); cancelAnimationFrame(aFrm);} 
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
-    
-    // Tenta pegar spans de palavras individuais
-    sentSpans = Array.from(el.querySelectorAll('.word-span')); 
-    
-    // Se nao achou spans (ex: modo leitura simples), tenta spans de frases
-    if (sentSpans.length === 0) sentSpans = Array.from(el.querySelectorAll('.k-sent'));
-    
-    // Se ainda vazio, usa o próprio elemento clicado como bloco único
-    if (sentSpans.length === 0) sentSpans = [el];
-    
-    let textToRead = el.innerText; 
-    speak(textToRead); 
+function togglePlay(){ 
+    if(synthesis.speaking){ 
+        if(synthesis.paused) { synthesis.resume(); document.getElementById('playBtn').innerText='⏸'; }
+        else { synthesis.pause(); document.getElementById('playBtn').innerText='▶'; }
+    }
 }
 
-function wordClick(e, word) { e.stopPropagation(); if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; cancelAnimationFrame(aFrm); } openAdd(word); }
-function loop(){ if(!curAud || curAud.paused) return; if(curAud.duration > 0){ const p = curAud.currentTime / curAud.duration; let idx = cumWeights.findIndex(t => t >= p); if(idx === -1) idx = cumWeights.length - 1; document.querySelectorAll('.word-active').forEach(w => w.classList.remove('word-active')); if(sentSpans[idx]) sentSpans[idx].classList.add('word-active'); } aFrm = requestAnimationFrame(loop); }
+function prepare(el){
+    if(synthesis.speaking) synthesis.cancel();
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+    
+    // Pega todos os spans de palavras dentro do bloco clicado
+    currentSpans = Array.from(el.querySelectorAll('.word-span'));
+    
+    // Se não tiver spans (ex: modo leitura simples), usa o texto todo
+    let textToRead = "";
+    if (currentSpans.length > 0) {
+        textToRead = currentSpans.map(s => s.innerText).join(" ");
+    } else {
+        textToRead = el.innerText;
+        // Se for bloco unico, não tem como destacar palavra por palavra, destaca tudo
+        el.classList.add('word-active');
+    }
+    
+    speak(textToRead);
+}
+
+function wordClick(e, word) { e.stopPropagation(); if(synthesis.speaking) synthesis.cancel(); openAdd(word); }
 function openAdd(w){ document.getElementById("mod").style.display="block"; const inp = document.getElementById("fIn"); inp.value = w; inp.removeAttribute('readonly'); fetchTranslation(w); }
 function fetchTranslation(w) { fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>document.getElementById('bIn').value=d.t); }
 function refreshTrans() { const w = document.getElementById("fIn").value; fetchTranslation(w); }
@@ -814,7 +835,9 @@ function nextWord() { if(wordPool.length > 0) { const w = wordPool[Math.floor(Ma
 
 function toggleShadow(btn, e) {
     e.stopPropagation();
-    if(curAud) { curAud.pause(); cancelAnimationFrame(aFrm); document.getElementById('playBtn').innerText='▶'; }
+    if(synthesis.speaking) synthesis.cancel(); 
+    document.getElementById('playBtn').innerText='▶';
+    
     if (btn.classList.contains('shadow-recording')) {
         if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
         btn.classList.remove('shadow-recording');
@@ -985,7 +1008,7 @@ function reveal(el, word) {
 {% endif %}
 
 <div class="fab" onclick="openManualAdd()">➕</div>
-<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" oninput="rate=this.value"></div></div>
+<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" oninput="rate=this.value; if(synthesis.speaking){synthesis.cancel(); speak(utterance.text);}"></div></div>
 <div id="mod" class="modal" style="display:none;"><form action="/adicionar_vocab" method="POST" onsubmit="submitAjax(event)"><h3 style="margin-top:0">Save to My Vocabulary</h3><div class="modal-actions"><input type="text" id="fIn" name="term" placeholder="Type in PT or EN (Auto-Translate)..." style="width:100%"></div><button class="btn" style="margin-top:10px;">SAVE</button><button type="button" class="btn" style="background:#888;margin-top:10px;" onclick="document.getElementById('mod').style.display='none'">CLOSE</button></form></div>
 </body></html>
 """
