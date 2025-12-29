@@ -16,6 +16,7 @@ from deep_translator import GoogleTranslator
 from models import db, Deck, Card, Story, Sentence, StudyLog, Reference, Project, Draft
 import utils
 
+# --- INICIALIZAÇÃO DO APP (CRUCIAL ESTAR AQUI) ---
 app = Flask(__name__)
 
 # --- CONFIGURAÇÃO DO BANCO DE DADOS ---
