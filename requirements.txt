@@ -4,7 +4,9 @@ SQLAlchemy
 deep-translator
 pypdf
 gTTS
+edge-tts
 biopython
 eng-to-ipa
 gunicorn
 psycopg2-binary
+

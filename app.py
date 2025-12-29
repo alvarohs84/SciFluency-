@@ -3,8 +3,9 @@ import random
 import re
 import time
 import json
-import csv
-from io import BytesIO, StringIO, TextIOWrapper
+import asyncio
+import edge_tts
+from io import BytesIO
 from datetime import datetime, timedelta
 from collections import Counter
 
@@ -13,7 +14,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect
 from deep_translator import GoogleTranslator
 from pypdf import PdfReader
-from gtts import gTTS
 from Bio import Entrez
 import eng_to_ipa as ipa
 
@@ -29,6 +29,34 @@ Entrez.tool = "SciFluencyResearch"
 
 db = SQLAlchemy(app)
 APP_NAME = "SciFluency"
+
+# --- MAPEAMENTO DE VOZES NEURAIS ---
+VOICE_MAPPING = {
+    'com': 'en-US-ChristopherNeural',  # Americano Acadêmico
+    'co.uk': 'en-GB-RyanNeural',       # Britânico Acadêmico
+    'pt': 'pt-BR-AntonioNeural'        # Português Natural
+}
+
+# --- FUNÇÕES AUXILIARES DE ÁUDIO (ASYNC WRAPPER) ---
+async def generate_neural_audio(text, voice):
+    communicate = edge_tts.Communicate(text, voice)
+    audio_data = BytesIO()
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data.write(chunk["data"])
+    audio_data.seek(0)
+    return audio_data
+
+def get_audio_sync(text, accent='com'):
+    voice = VOICE_MAPPING.get(accent, 'en-US-ChristopherNeural')
+    try:
+        # Cria um novo event loop para rodar o async dentro do Flask
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(generate_neural_audio(text, voice))
+    except Exception as e:
+        print(f"Erro Neural TTS: {e}")
+        return None
 
 # --- MODELOS ---
 class Deck(db.Model):
@@ -247,15 +275,12 @@ def parse_nbib_bulk(content):
 def format_abstract_smart(text):
     if not text: return ""
     formatted = text
-    
     # Limpeza simples para evitar poluição visual do PDF
-    # Substitui quebras de linha excessivas por espaço
     formatted = re.sub(r'\s+', ' ', formatted)
     
-    # Destaque de seções (Simplificado para <b> sem style inline que quebra o HTML)
+    # Destaque de seções
     sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
     for sec in sections:
-        # Usa regex para encontrar a seção e colocar em negrito simples
         pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
         formatted = pattern.sub(r"<br><br><b>\1</b>", formatted)
     
@@ -263,9 +288,7 @@ def format_abstract_smart(text):
     final_html = ""
     for sent in sentences:
         if len(sent.strip()) > 1:
-            # REMOVIDO AQUI A LÓGICA DE SPAN POR PALAVRA
-            # Agora criamos apenas um bloco clicável para a frase inteira.
-            # Isso elimina o erro de visualização "polluted" e simplifica a leitura.
+            # Mantemos o leitor de frases para PDF (sem spans por palavra para evitar poluição)
             final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px; padding:8px; cursor:pointer; line-height:1.6;'>{sent}</div>"
     return final_html
 
@@ -309,13 +332,14 @@ def tts_route():
     else:
         text = request.args.get('text', '')
         accent = request.args.get('accent', 'com')
-    fp = BytesIO()
-    try: 
-        # OBTEM AUDIO DO GOOGLE (Servidor)
-        gTTS(text=text, lang='en', tld=accent).write_to_fp(fp)
-        fp.seek(0)
-        return send_file(fp, mimetype='audio/mpeg')
-    except: return "Error", 500
+    
+    # GERA AUDIO NEURAL (EDGE-TTS)
+    audio_data = get_audio_sync(text, accent)
+    
+    if audio_data:
+        return send_file(audio_data, mimetype='audio/mpeg')
+    else:
+        return "Error generating audio", 500
 
 @app.route('/systems', methods=['GET', 'POST'])
 def systems():
@@ -655,6 +679,7 @@ def podcast(id):
     try:
         full_audio = BytesIO()
         intro_text = f"SciFluency Bilingual Audio. {story.title}."
+        # Mantemos gTTS para podcast offline por enquanto, pois edge-tts requer loop async complexo para chunks
         tts_intro = gTTS(text=intro_text, lang='en', tld='com')
         tts_intro.write_to_fp(full_audio)
         count = 0
@@ -680,7 +705,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (VISUAL LIMPO E ROBUSTO) ---
+# --- FRONTEND (VISUAL LIMPO, KARAOKÊ HÍBRIDO E AUDIO NEURAL) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -697,6 +722,9 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bot
 .card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:16px;border:1px solid var(--border);box-shadow:0 4px 10px var(--shadow);}
 .btn{background:var(--accent);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-weight:bold;cursor:pointer;}
 .sentence-block{padding:18px;margin-bottom:12px;border-left:5px solid transparent;cursor:pointer;background:var(--card);border-radius:8px; position: relative;}
+.k-sent { cursor: pointer; transition: background-color 0.2s; padding: 2px 0; border-radius: 4px; }
+.k-sent:hover { background-color: #e1f5fe; color: #000; }
+.word-active { background-color: #ffeb3b !important; color: #000; box-shadow: 0 0 5px #ffeb3b; }
 .sentence-active { background-color: #e1f5fe; border-left: 5px solid var(--accent); }
 .player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
 .controls-row{display:flex;gap:15px;align-items:center;}
@@ -738,6 +766,8 @@ input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px soli
 </style>
 <script>
 let curAud = null;
+let currentSpans = [];
+let karaokeTimeout = null;
 let rate = 1.0;
 let acc = 'com'; 
 let shadowRec = null; 
@@ -748,8 +778,12 @@ function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
+// --- ESTRATÉGIA HÍBRIDA COM TIMING PONDERADO ---
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
+    if(karaokeTimeout) clearTimeout(karaokeTimeout);
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+
     const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
     const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
 
@@ -768,14 +802,59 @@ async function speak(text){
         curAud.onloadedmetadata = () => { 
             btn.innerText='⏸';
             curAud.play();
+            // Inicia o Karaoke SE HOUVER SPANS DE PALAVRAS
+            if(currentSpans.length > 0) {
+                startWeightedKaraoke(curAud.duration);
+            }
         }; 
         
         curAud.onended = () => { 
             btn.innerText='▶'; 
-            document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
+            if(karaokeTimeout) clearTimeout(karaokeTimeout);
+            document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
+            document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active'));
         }; 
         
     } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
+}
+
+function startWeightedKaraoke(duration) {
+    if (currentSpans.length === 0) return;
+    
+    // Calcula o peso total (número de caracteres)
+    let weights = currentSpans.map(span => span.innerText.length);
+    let totalWeight = weights.reduce((a, b) => a + b, 0);
+    
+    // Tempo total em ms ajustado pela velocidade
+    let totalTimeMs = (duration * 1000) / rate;
+    
+    // Quanto tempo vale 1 caractere?
+    let timePerWeight = totalTimeMs / totalWeight;
+    
+    let index = 0;
+    
+    // Função recursiva para acender a próxima palavra
+    function nextWord() {
+        if (index >= currentSpans.length) {
+            clearTimeout(karaokeTimeout);
+            return;
+        }
+        
+        // Remove destaque anterior
+        if (index > 0) currentSpans[index-1].classList.remove('word-active');
+        
+        // Adiciona destaque atual
+        currentSpans[index].classList.add('word-active');
+        
+        // Calcula quanto tempo essa palavra deve ficar acesa
+        let delay = weights[index] * timePerWeight;
+        
+        index++;
+        karaokeTimeout = setTimeout(nextWord, delay);
+    }
+    
+    // Começa
+    nextWord();
 }
 
 function togglePlay(){ 
@@ -787,20 +866,28 @@ function togglePlay(){
     } else{ 
         curAud.pause(); 
         btn.innerText='▶'; 
+        if(karaokeTimeout) clearTimeout(karaokeTimeout);
     } 
 }
 
 function prepare(el){ 
-    if(curAud){curAud.pause();} 
+    if(curAud){curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout);} 
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
     document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
     
-    // Destaca a frase inteira
-    el.classList.add('sentence-active');
+    // Se for o Phrasebank, tem spans de palavras
+    currentSpans = Array.from(el.querySelectorAll('.word-span')); 
+    
+    if (currentSpans.length === 0) {
+        // MODO LEITURA (PDF/ARTIGOS): Destaca o bloco inteiro
+        el.classList.add('sentence-active');
+    }
     
     let textToRead = el.innerText; 
     speak(textToRead); 
 }
 
+function wordClick(e, word) { e.stopPropagation(); if(curAud){ curAud.pause(); } openAdd(word); }
 function openAdd(w){ document.getElementById("mod").style.display="block"; const inp = document.getElementById("fIn"); inp.value = w; inp.removeAttribute('readonly'); fetchTranslation(w); }
 function fetchTranslation(w) { fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>document.getElementById('bIn').value=d.t); }
 function refreshTrans() { const w = document.getElementById("fIn").value; fetchTranslation(w); }
