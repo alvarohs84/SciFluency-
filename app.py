@@ -1,18 +1,19 @@
 import os
-import json
-import random
+import re
 from datetime import datetime, timedelta
 from io import BytesIO
 
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
-from sqlalchemy import text, inspect
+from werkzeug.utils import secure_filename
+from sqlalchemy import text
 from pypdf import PdfReader
 from deep_translator import GoogleTranslator
-from Bio import Entrez
-import uuid
+from gtts import gTTS
+import edge_tts
+import asyncio
 
-# IMPORTAÇÕES LOCAIS (A MÁGICA ACONTECE AQUI)
-from models import db, Deck, Card, Story, Sentence, StudyLog
+# IMPORTAÇÕES LOCAIS
+from models import db, Deck, Card, Story, Sentence, StudyLog, Reference, Project, Note, Draft
 import utils
 
 app = Flask(__name__)
@@ -21,79 +22,116 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# CONFIGURAÇÃO DE UPLOAD
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 db.init_app(app)
-Entrez.email = "researcher@example.com"
-APP_NAME = "SciFluency"
+APP_NAME = "SciFluency Research OS"
 
-# LINKS GLOBAIS
-RESEARCH_LINKS = [
-    {"name": "PubMed", "url": "https://pubmed.ncbi.nlm.nih.gov/", "icon": "🧬"},
-    {"name": "SciELO", "url": "https://scielo.org/", "icon": "🌎"},
-    {"name": "Google Scholar", "url": "https://scholar.google.com.br/", "icon": "🎓"}
-]
-
-def log_activity(points):
-    today = datetime.now().strftime('%Y-%m-%d')
-    log = StudyLog.query.filter_by(date=today).first()
-    if not log: log = StudyLog(date=today, count=0); db.session.add(log)
-    log.count += points
-    db.session.commit()
+# --- ROTAS PRINCIPAIS ---
 
 @app.route('/')
 def index():
-    # Garante decks
-    if not Deck.query.first():
+    # Cria projeto padrão se não existir
+    if not Project.query.first():
         db.create_all()
-        db.session.add(Deck(id="my_vocab", name="My Vocabulary", icon="🗂️"))
+        db.session.add(Project(id="thesis", title="Meu Projeto de Pesquisa", target_journal="Nature/Science"))
+        db.session.add(Deck(id="my_vocab", name="Vocabulário Acadêmico", icon="🎓"))
         db.session.commit()
     
-    main_deck = Deck.query.get("my_vocab")
-    today = datetime.now().strftime('%Y-%m-%d')
-    due = Card.query.filter(Card.deck_id == "my_vocab", Card.next_review <= today).count()
+    proj = Project.query.first()
+    # Contagem de Referências
+    refs_count = Reference.query.count()
+    to_read = Reference.query.filter_by(status='to_read').count()
+    reading = Reference.query.filter_by(status='reading').count()
+    done = Reference.query.filter_by(status='done').count()
     
-    heatmap = []
-    for i in range(13, -1, -1):
-        d = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
-        l = StudyLog.query.filter_by(date=d).first()
-        heatmap.append({"date": d, "count": l.count if l else 0, "color": "var(--heat-1)" if l else "var(--heat-0)"})
+    stats = {
+        "refs": refs_count, "to_read": to_read, "reading": reading, "done": done,
+        "vocab": Card.query.count()
+    }
 
-    return render_template('layout.html', mode='list', stories=Story.query.all(), 
-                         decks=[{"id": "my_vocab", "name": "My Vocab", "due_count": due}], 
-                         stats={"total": Card.query.count(), "mastered": 0, "heatmap": heatmap}, 
-                         app_name=APP_NAME, links=RESEARCH_LINKS)
+    return render_template('layout.html', mode='dashboard', project=proj, stats=stats, app_name=APP_NAME)
+
+@app.route('/library', methods=['GET', 'POST'])
+def library():
+    if request.method == 'POST':
+        # UPLOAD DE REFERÊNCIA (PDF)
+        f = request.files.get('pdf_file')
+        if f and f.filename:
+            filename = secure_filename(f.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            f.save(filepath)
+            
+            # Tenta extrair texto para o resumo automático
+            try:
+                reader = PdfReader(filepath)
+                text_content = " ".join([page.extract_text() for page in reader.pages[:2]]) # Pega as 2 primeiras pags
+                abstract_preview = text_content[:500] + "..."
+            except:
+                abstract_preview = "Texto não extraído."
+
+            new_ref = Reference(
+                title=request.form.get('title') or filename,
+                authors=request.form.get('authors') or "Unknown",
+                year=request.form.get('year') or "2024",
+                status='to_read',
+                pdf_filename=filename,
+                abstract=abstract_preview,
+                project_id="thesis"
+            )
+            db.session.add(new_ref)
+            db.session.commit()
+            return redirect(url_for('library'))
+
+    refs = Reference.query.order_by(Reference.id.desc()).all()
+    return render_template('layout.html', mode='library', references=refs, app_name=APP_NAME)
+
+@app.route('/update_status/<int:id>/<new_status>')
+def update_status(id, new_status):
+    ref = Reference.query.get(id)
+    if ref:
+        ref.status = new_status
+        db.session.commit()
+    return redirect(url_for('library'))
+
+@app.route('/delete_ref/<int:id>')
+def delete_ref(id):
+    ref = Reference.query.get(id)
+    if ref:
+        # Tenta remover o arquivo físico também
+        try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], ref.pdf_filename))
+        except: pass
+        db.session.delete(ref)
+        db.session.commit()
+    return redirect(url_for('library'))
+
+# --- RECURSOS DE ESTUDO (MANTIDOS) ---
+@app.route('/vocab_list')
+def vocab_list():
+    return render_template('layout.html', mode='vocab_list', cards=Card.query.all(), app_name=APP_NAME)
+
+@app.route('/writer')
+def writer():
+    return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
+
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    results = []
+    if request.method == 'POST':
+        # Simulação de busca no PubMed (pode ser reativada completa com BioPython)
+        pass 
+    return render_template('layout.html', mode='search', results=results, links=utils.RESEARCH_LINKS, app_name=APP_NAME)
 
 @app.route('/tts', methods=['POST'])
 def tts():
-    audio = utils.get_audio_sync(request.form.get('text'), request.form.get('accent'))
+    # Rota para voz neural
+    text = request.form.get('text')
+    accent = request.form.get('accent')
+    audio = utils.get_audio_sync(text, accent)
     return send_file(audio, mimetype='audio/mpeg') if audio else ("Error", 500)
-
-@app.route('/summarizer', methods=['GET', 'POST'])
-def summarizer():
-    results = []
-    if request.method == 'POST':
-        # Lógica simplificada chamando utils
-        for f in request.files.getlist("nbib_file"):
-            if f.filename.endswith('.pdf'):
-                txt = " ".join([p.extract_text() for p in PdfReader(f).pages])
-                results.append({"title": f.filename, "formatted_html": utils.format_abstract_smart(txt)})
-        
-        txt_in = request.form.get('text_input')
-        if txt_in: results.append({"title": "Text Input", "formatted_html": utils.format_abstract_smart(txt_in)})
-        
-    return render_template('layout.html', mode='summarizer', batch_results=results, app_name=APP_NAME)
-
-# --- ROTAS CURTAS PARA AS OUTRAS FUNÇÕES ---
-@app.route('/search', methods=['GET', 'POST'])
-def search():
-    res = []
-    if request.method == 'POST':
-        # Chama Entrez logic aqui (simplificado para o exemplo)
-        pass 
-    return render_template('layout.html', mode='search', results=res, app_name=APP_NAME)
-
-@app.route('/phrases')
-def phrases():
-    return render_template('layout.html', mode='phrases', phrases=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
 
 @app.route('/traduzir_palavra')
 def traduzir():
@@ -101,17 +139,14 @@ def traduzir():
 
 @app.route('/adicionar_vocab', methods=['POST'])
 def add_vocab():
-    f = request.form.get('term')
-    db.session.add(Card(front=f, back="...", deck_id="my_vocab", next_review=datetime.now().strftime('%Y-%m-%d')))
+    term = request.form.get('term')
+    db.session.add(Card(front=term, back="...", deck_id="my_vocab", next_review=datetime.now().strftime('%Y-%m-%d')))
     db.session.commit()
-    return jsonify({"status":"ok"})
+    return jsonify({"status": "ok"})
 
-# ROTA PARA SCI-WRITER (NOVA!)
-@app.route('/writer')
-def writer():
-    return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
-
+# Inicialização
 with app.app_context():
     db.create_all()
 
-if __name__ == '__main__': app.run(host='0.0.0.0', port=5000)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)

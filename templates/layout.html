@@ -5,388 +5,180 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
 <style>
-/* --- VARIÁVEIS E CORES --- */
-:root { --bg: #f8faff; --card: #fff; --text: #333; --subtext: #7f8c8d; --accent: #0088cc; --border: #e1e8ed; --input: #fff; --heat-0: #ecf0f1; --heat-1: #a8e6cf; --heat-2: #55efc4; --heat-3: #00b894; --shadow: rgba(0,0,0,0.03); }
-body.dark-mode { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --subtext: #b0b0b0; --accent: #4fc3f7; --border: #333; --input: #2c2c2c; --heat-0: #2c2c2c; --heat-1: #1e3a2f; --heat-2: #2e7d62; --heat-3: #00b894; --shadow: rgba(0,0,0,0.5); }
-body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:180px;color:var(--text); transition: background 0.3s;}
+/* --- CORES DO RESEARCH OS --- */
+:root { 
+    --bg: #f4f6f8; --card: #ffffff; --text: #2c3e50; --subtext: #7f8c8d; 
+    --accent: #2980b9; --border: #dfe6e9; --input: #fdfdfd;
+    --status-todo: #95a5a6; --status-doing: #f39c12; --status-done: #27ae60;
+}
+body.dark-mode { 
+    --bg: #1e1e1e; --card: #2d2d2d; --text: #ecf0f1; --subtext: #bdc3c7; 
+    --accent: #3498db; --border: #444; --input: #3d3d3d;
+}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:100px;color:var(--text); transition:0.3s;}
 
-/* --- ESTRUTURA --- */
-.header{background:var(--card);padding:18px;border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:0;z-index:1000; justify-content: space-between;}
-.container{padding:20px;max-width:650px;margin:0 auto;}
-.sidebar{height:100%;width:0;position:fixed;top:0;left:0;background:var(--card);overflow-x:hidden;transition:0.3s;padding-top:60px;z-index:2000;box-shadow:2px 0 100px rgba(0,0,0,0.2);}
+/* --- LAYOUT GERAL --- */
+.header{background:var(--card);padding:15px;border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:0;z-index:1000; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
+.container{padding:20px;max-width:800px;margin:0 auto;}
+.sidebar{height:100%;width:0;position:fixed;top:0;left:0;background:var(--card);overflow-x:hidden;transition:0.3s;padding-top:60px;z-index:2000;box-shadow:2px 0 100px rgba(0,0,0,0.2); border-right:1px solid var(--border);}
 .sidebar a{padding:15px 25px;text-decoration:none;font-size:1.1rem;color:var(--text);display:block;border-bottom:1px solid var(--border);}
 .sidebar a span{display:block;font-size:0.8rem;color:var(--subtext);margin-top:2px;}
-.card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:16px;border:1px solid var(--border);box-shadow:0 4px 10px var(--shadow);}
-.btn{background:var(--accent);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-weight:bold;cursor:pointer;}
-.fab { position: fixed; bottom: 90px; right: 20px; width: 56px; height: 56px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; transition: transform 0.2s; user-select: none; }
-.fab:active { transform: scale(0.95); }
 
-/* --- LEITURA E PLAYER --- */
-.sentence-block{padding:18px;margin-bottom:12px;border-left:5px solid transparent;cursor:pointer;background:var(--card);border-radius:8px; position: relative;}
-.sentence-active { background-color: #e1f5fe; border-left: 5px solid var(--accent); }
-body.dark-mode .sentence-active { background-color: #2c3e50; }
-.word-span { transition: 0.1s; border-bottom: 1px dotted transparent; cursor: pointer;}
-.word-span:hover { background: #f39c12; color: white; border-radius: 3px; }
-.word-active { background-color: #ffeb3b !important; color: #000; box-shadow: 0 0 5px #ffeb3b; border-radius: 3px;}
-.player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
-.controls-row{display:flex;gap:15px;align-items:center;}
+/* --- COMPONENTES --- */
+.card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.03);}
+.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer; display:inline-block; text-align:center; text-decoration:none;}
+.btn-sm{padding:5px 10px; font-size:0.8rem;}
+.fab { position: fixed; bottom: 30px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
 
-/* --- FORMULÁRIOS E INPUTS --- */
-input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px solid var(--border);border-radius:10px; background:var(--input); color:var(--text); box-sizing: border-box;}
-.text-area-box { width: 100%; padding: 15px; border-radius: 12px; font-family: inherit; font-size: 1rem; line-height: 1.5; resize: vertical; min-height: 120px; }
-
-/* --- MODAIS (POPUPS) --- */
-.modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-.modal form { background-color: var(--card); margin: 15% auto; padding: 25px; border: 1px solid var(--border); width: 85%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); color: var(--text); position: relative; }
-#dictMod .modal-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; color: var(--accent); }
-#dictMod .modal-sub { color: var(--subtext); font-style: italic; margin-bottom: 20px; display: block; }
-.dict-actions { display: flex; gap: 10px; }
-
-/* --- SCI-WRITER TOOLS --- */
-.writer-toolbar { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 10px; }
-.writer-tag { white-space: nowrap; background: var(--bg); border: 1px solid var(--border); padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; }
-.writer-tag:hover { background: var(--accent); color: white; }
-.connector-list { display: none; background: var(--card); border: 1px solid var(--border); padding: 10px; border-radius: 10px; margin-bottom: 15px; max-height: 150px; overflow-y: auto; }
-.connector-item { padding: 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
-.connector-item:hover { background: var(--bg); font-weight: bold; }
+/* --- LIBRARY SPECIFIC --- */
+.ref-card { display: flex; flex-direction: column; gap: 10px; border-left: 5px solid var(--status-todo); }
+.ref-card.reading { border-left-color: var(--status-doing); }
+.ref-card.done { border-left-color: var(--status-done); }
+.ref-meta { display: flex; justify-content: space-between; align-items: center; color: var(--subtext); font-size: 0.9rem; }
+.ref-actions { display: flex; gap: 5px; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;}
+.status-badge { padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; color: white; background: var(--status-todo); }
 
 /* --- DASHBOARD --- */
-.dash-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-.stat-card { background: var(--card); padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 5px var(--shadow); }
-.stat-val { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
-.stat-lbl { font-size: 0.8rem; color: var(--subtext); text-transform: uppercase; letter-spacing: 1px; }
-.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-.heat-day { aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #555; }
-.hub-card{text-align:center;padding:20px;cursor:pointer;}.hub-card:hover{filter:brightness(0.95);}
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+.stat-box { background: var(--card); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
+.stat-num { font-size: 2rem; font-weight: bold; color: var(--accent); }
+.stat-label { font-size: 0.9rem; color: var(--subtext); }
 
-/* --- OUTROS --- */
-.mic-btn-active { background-color: #e74c3c !important; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
-.shadow-btn { float: right; margin-left: 10px; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: #ecf0f1; color: #333; }
-.shadow-recording { background: #e74c3c !important; color: white; animation: pulse 1.5s infinite; }
-/* QUIZ STYLES */
-.quiz-hidden { background: #f1c40f; color: transparent; border-radius: 4px; padding: 0 5px; cursor: pointer; user-select: none; border-bottom: 2px solid #d35400; font-size: 0.9em; min-width: 30px; display: inline-block; text-align: center; }
-.quiz-hidden:hover { background: #f39c12; }
-.quiz-revealed { background: transparent; color: #2ecc71; font-weight: bold; border-bottom: none; animation: pop 0.3s ease; }
-@keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+/* --- INPUTS --- */
+input, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input); color: var(--text); box-sizing: border-box;}
+.modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+.modal-content { background-color: var(--card); padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; }
+
+/* --- SCI-WRITER --- */
+.writer-toolbar { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
+.writer-tag { white-space: nowrap; background: var(--bg); border: 1px solid var(--border); padding: 5px 15px; border-radius: 20px; cursor: pointer; }
+.text-area-box { width: 100%; padding: 15px; border-radius: 12px; font-family: inherit; line-height: 1.6; min-height: 300px; border: 1px solid var(--border); background: var(--input); color: var(--text);}
 </style>
 <script>
-// --- ÁUDIO & KARAOKÊ (HARDWARE SYNC + NEURAL) ---
-let curAud = null;
-let currentSpans = [];
-let rate = 1.0;
-let acc = 'com'; 
-let shadowRec = null; 
-let shadowChunks = [];
-
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
-function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
-window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
-
-async function speak(text){ 
-    if(curAud) { curAud.pause(); curAud = null; } 
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
-
-    const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
-    const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
-
-    try { 
-        const response = await fetch('/tts', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
-            body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=' + acc 
-        }); 
-        
-        const blob = await response.blob(); 
-        const url = URL.createObjectURL(blob); 
-        curAud = new Audio(url); 
-        curAud.playbackRate = rate; 
-        
-        // --- SINCRONIA: MAPEAR PALAVRAS VISUAIS ---
-        let totalChars = 0;
-        let wordMap = []; 
-        currentSpans.forEach(span => {
-            let len = span.innerText.length;
-            wordMap.push({ el: span, start: totalChars, end: totalChars + len });
-            totalChars += len + 1; // +1 pelo espaço do TTS
-        });
-
-        // --- LOOP DE ATUALIZAÇÃO (HARDWARE SYNC) ---
-        curAud.ontimeupdate = () => {
-            if(!curAud.duration) return;
-            let progress = curAud.currentTime / curAud.duration;
-            let currentChar = Math.floor(progress * totalChars);
-            
-            let found = false;
-            for(let w of wordMap) {
-                if(currentChar >= w.start && currentChar < w.end) { 
-                    if (!w.el.classList.contains('word-active')) {
-                        document.querySelectorAll('.word-active').forEach(old => old.classList.remove('word-active'));
-                        w.el.classList.add('word-active');
-                    }
-                    found = true;
-                    break; 
-                }
-            }
-            if(!found) document.querySelectorAll('.word-active').forEach(old => old.classList.remove('word-active'));
-        };
-
-        curAud.onloadedmetadata = () => { btn.innerText='⏸'; curAud.play(); }; 
-        curAud.onended = () => { btn.innerText='▶'; document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); }; 
-        
-    } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
+function toggleTheme() { document.body.classList.toggle('dark-mode'); }
+function toggleModal(id) { 
+    const m = document.getElementById(id); 
+    m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; 
 }
-
-function togglePlay(){ 
-    if(!curAud) return; 
-    const btn=document.getElementById('playBtn'); 
-    if(curAud.paused){ curAud.play(); btn.innerText='⏸'; } else{ curAud.pause(); btn.innerText='▶'; } 
-}
-
-function prepare(el){ 
-    if(curAud){curAud.pause();} 
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
-    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
-    
-    // Tenta pegar spans de palavras (Phrasebank/Tutor)
-    currentSpans = Array.from(el.querySelectorAll('.word-span')); 
-    
-    // Se não tiver (PDF/Leitura), destaca o bloco todo
-    if (currentSpans.length === 0) { el.classList.add('sentence-active'); }
-    
-    let textToRead = el.innerText; 
-    speak(textToRead); 
-}
-
-// --- SHADOWING (GRAVADOR) ---
-function toggleShadow(btn, e) {
-    e.stopPropagation();
-    if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
-    if (btn.classList.contains('shadow-recording')) {
-        if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
-        btn.classList.remove('shadow-recording');
-        btn.innerHTML = '🔊';
-    } else {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            shadowRec = new MediaRecorder(stream);
-            shadowChunks = [];
-            shadowRec.ondataavailable = e => shadowChunks.push(e.data);
-            shadowRec.onstop = () => {
-                const blob = new Blob(shadowChunks, { type: 'audio/ogg; codecs=opus' });
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                audio.play();
-                btn.innerHTML = '🔊'; 
-                audio.onended = () => { btn.innerHTML = '🎤'; }; 
-            };
-            shadowRec.start();
-            btn.classList.add('shadow-recording');
-            btn.innerHTML = '⏹️'; 
-        }).catch(err => { alert("Microphone access needed."); btn.innerHTML = '🚫'; });
-    }
-}
-
-// --- DICIONÁRIO POP-UP ---
-function mineWord(e, w) { 
-    e.stopPropagation(); 
-    if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
-    openDict(w); 
-}
-function openDict(w) {
-    const mod = document.getElementById("dictMod");
-    mod.style.display = "flex"; // Flex para centralizar
-    document.getElementById("dictWord").innerText = w;
-    document.getElementById("dictTrans").innerText = "Translating...";
-    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{
-        document.getElementById("dictTrans").innerText = d.t;
-        document.getElementById("save_f").value = w;
-        document.getElementById("save_b").value = d.t;
-    });
-}
-function playDictWord() { speak(document.getElementById("dictWord").innerText); }
-function saveFromDict() {
-    const w = document.getElementById("dictWord").innerText;
-    const t = document.getElementById("dictTrans").innerText;
-    const formData = new FormData();
-    formData.append('term', w);
-    formData.append('ajax', '1');
-    fetch('/adicionar_vocab', { method: 'POST', body: formData }).then(r=>r.json()).then(d=>{
-        document.getElementById("dictMod").style.display='none';
-        alert("Saved: " + w);
-    });
-}
-
-// --- SCI-WRITER LOGIC (CORRIGIDO) ---
-function toggleConnectors(id) {
-    document.querySelectorAll('.connector-list').forEach(l => l.style.display = 'none');
-    if (id) {
-        const list = document.getElementById(id);
-        if(list) list.style.display = 'block';
-    }
-}
-function insertText(text) {
-    const area = document.getElementById('writerArea');
-    
-    // Insere exatamente onde o cursor está
-    if (area.selectionStart || area.selectionStart == '0') {
-        var startPos = area.selectionStart;
-        var endPos = area.selectionEnd;
-        area.value = area.value.substring(0, startPos)
-            + text + " "
-            + area.value.substring(endPos, area.value.length);
-        
-        // Reposiciona o cursor após o texto inserido
-        area.selectionStart = startPos + text.length + 1;
-        area.selectionEnd = startPos + text.length + 1;
-    } else {
-        area.value += text + " ";
-    }
-    
-    toggleConnectors(null); // Fecha lista
-    area.focus(); // Devolve o foco
-}
-
-function openManualAdd() { document.getElementById("mod").style.display="block"; document.getElementById("fIn").value=""; }
-function toggleMiner() { document.body.classList.toggle('mode-mine'); } // Alterna cursor
-function submitAjax(e) {
-    e.preventDefault();
-    const f = e.target;
-    const btn = f.querySelector('button');
-    const originalText = btn.innerText;
-    btn.innerText = "Saving...";
-    fetch('/adicionar_vocab', {
-        method: 'POST',
-        body: new URLSearchParams(new FormData(f)) + '&ajax=1',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    }).then(r=>r.json()).then(d=>{
-        btn.innerText = "Saved! ✅";
-        setTimeout(()=>{
-            document.getElementById('mod').style.display='none';
-            btn.innerText = originalText;
-        }, 800);
-    });
-}
-
-function loadQuiz(containerId, textContent) {
-    const btn = document.getElementById('quizBtn_' + containerId);
-    btn.innerText = "⏳ Generating...";
-    fetch('/get_quiz', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'text=' + encodeURIComponent(textContent)
-    }).then(r => r.json()).then(data => {
-        const box = document.getElementById('quizBox_' + containerId);
-        box.innerHTML = data.html;
-        box.style.display = 'block';
-        box.scrollIntoView({behavior: "smooth"});
-        btn.innerText = "🔄 Regenerate Quiz";
-    });
-}
-function reveal(el, word) { el.classList.remove('quiz-hidden'); el.classList.add('quiz-revealed'); el.innerText = word; }
 </script>
 </head>
 <body>
 
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2rem;padding-right:20px;">&times;</a>
-    <a href="javascript:void(0)" onclick="toggleTheme()">🌙 Theme</a>
-    <a href="/">📚 Play Deck <span>Review Cards</span></a>
-    <a href="/writer">📝 Sci-Writer <span>Assistente de Escrita</span></a>
-    <a href="/vocab_list">🗂️ My Vocabulary <span>Manager</span></a>
-    <a href="/search">🔍 PubMed Search <span>Find Articles</span></a>
-    <a href="/summarizer">⚡ Summarizer <span>PDF & Text</span></a>
-    <a href="/tutor">👩‍🏫 AI Tutor <span>Reverse Learning</span></a>
-    <a href="/pronunciation">🎤 Pronunciation <span>Lab</span></a>
-    <a href="/checker">📝 Grammar <span>Checker</span></a>
-    <a href="/phrases">📖 Phrasebank <span>Templates</span></a>
-    <a href="/systems">🧩 Language Lab <span>Morphology</span></a>
-    <a href="/hub">🌐 Research Hub <span>Databases</span></a>
-    <a href="/miner">⛏️ Data Miner <span>Extractor</span></a>
-    <a href="/novo">✨ Read & Speak <span>Manual Input</span></a>
-    <a href="javascript:void(0)" onclick="if(confirm('Reset all?')){window.location.href='/reset_decks'}" style="color:#d63031;margin-top:20px;">⚠️ Factory Reset</a>
+    <a href="/">📊 Dashboard <span>Visão Geral</span></a>
+    <a href="/library">📚 My Library <span>Gerenciar Referências</span></a>
+    <a href="/writer">📝 Sci-Writer <span>Escrever Artigo</span></a>
+    <a href="/vocab_list">🗂️ Vocab Deck <span>Flashcards</span></a>
+    <a href="/search">🔍 PubMed <span>Buscar Novos</span></a>
 </div>
 
 <div class="header">
     <span onclick="openNav()" style="font-size:1.5rem;cursor:pointer;">☰</span>
     <h3 style="margin-left:20px; flex:1;">{{ app_name }}</h3>
-    <span id="themeIcon" onclick="toggleTheme()" style="font-size:1.5rem;cursor:pointer;">🌙</span>
+    <span onclick="toggleTheme()" style="font-size:1.5rem;cursor:pointer;">🌙</span>
 </div>
 
-{% if mode == 'list' %}
+{% if mode == 'dashboard' %}
 <div class="container">
-    <div class="dash-row"><div class="stat-card"><div class="stat-val">{{ stats.total }}</div><div class="stat-lbl">Words</div></div><div class="stat-card"><div class="stat-val" style="color:#27ae60;">{{ stats.mastered }}</div><div class="stat-lbl">Mastered</div></div></div>
-    <div class="card" style="padding:15px;"><div class="stat-lbl" style="text-align:left; margin-bottom:10px;">Activity (14 days)</div><div class="heatmap">{% for day in stats.heatmap %}<div class="heat-day" style="background:{{day.color}}" title="{{day.date}}: {{day.count}}">{{day.day}}</div>{% endfor %}</div></div>
-    <h3>Review</h3>{% for d in decks %}<a href="/jogar/{{d.id}}" style="text-decoration:none;color:inherit;"><div class="card" style="text-align:center; border:2px solid var(--accent);"><div style="font-size:3rem">{{d.icon}}</div><b>{{d.name}}</b><br><span class="sub-text">Tap to Review</span><br>{% if d.due_count > 0 %}<span class="badge">{{d.due_count}} cards due</span>{% else %}<small style="color:var(--subtext)">All done!</small>{% endif %}</div></a>{% endfor %}
-    <h3 style="margin-top:20px;">My Library</h3>{% for s in stories %}<div class="card" style="display:flex; justify-content:space-between; align-items:center;"><div><b>{{s.title}}</b><br><small style="color:var(--subtext)">{{s.sentences|length}} sentences</small></div><div><a href="/ler/{{s.id}}" class="btn" style="padding:5px 15px; margin-right:5px;">📖</a><a href="/deletar/{{s.id}}" class="btn" style="background:#e74c3c; padding:5px 10px;">🗑️</a></div></div>{% else %}<p style="text-align:center; color:var(--subtext);">Library empty.</p>{% endfor %}
+    <h2>{{ project.title }}</h2>
+    <p style="color:var(--subtext);">Alvo: {{ project.target_journal }}</p>
+    
+    <div class="dash-grid">
+        <div class="stat-box"><div class="stat-num">{{ stats.refs }}</div><div class="stat-label">Total References</div></div>
+        <div class="stat-box"><div class="stat-num" style="color:#f39c12;">{{ stats.reading }}</div><div class="stat-label">Reading Now</div></div>
+        <div class="stat-box"><div class="stat-num" style="color:#27ae60;">{{ stats.done }}</div><div class="stat-label">Completed</div></div>
+        <div class="stat-box"><div class="stat-num">{{ stats.vocab }}</div><div class="stat-label">Vocab Cards</div></div>
+    </div>
+
+    <h3>Ações Rápidas</h3>
+    <div style="display:grid; gap:10px;">
+        <a href="/library" class="btn" style="background:#34495e;">📂 Abrir Biblioteca</a>
+        <a href="/writer" class="btn">✍️ Continuar Escrevendo</a>
+    </div>
+</div>
+
+{% elif mode == 'library' %}
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3>Minha Biblioteca</h3>
+        <button class="btn" onclick="toggleModal('addRefModal')">+ PDF</button>
+    </div>
+
+    {% for ref in references %}
+    <div class="card ref-card {{ ref.status }}">
+        <div class="ref-meta">
+            <span style="font-weight:bold; color:var(--accent);">{{ ref.year }}</span>
+            <span class="status-badge" style="background:var(--status-{{ ref.status|replace('_','') }});">
+                {{ ref.status|upper }}
+            </span>
+        </div>
+        <h4 style="margin:5px 0;">{{ ref.title }}</h4>
+        <small style="color:var(--subtext);">{{ ref.authors }}</small>
+        
+        <div class="ref-actions">
+            <a href="/update_status/{{ref.id}}/reading" class="btn btn-sm" style="background:var(--bg); color:var(--text);">📖 Ler</a>
+            <a href="/update_status/{{ref.id}}/done" class="btn btn-sm" style="background:var(--bg); color:var(--text);">✅ Feito</a>
+            <a href="/delete_ref/{{ref.id}}" class="btn btn-sm" style="background:#e74c3c; color:white;">🗑️</a>
+        </div>
+    </div>
+    {% else %}
+    <div style="text-align:center; color:var(--subtext); padding:40px;">
+        <p>Nenhum artigo ainda.</p>
+        <p>Clique em <b>+ PDF</b> para começar.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div id="addRefModal" class="modal">
+    <div class="modal-content">
+        <h3>Adicionar Referência</h3>
+        <form action="/library" method="POST" enctype="multipart/form-data">
+            <label>Arquivo PDF (Obrigatório)</label>
+            <input type="file" name="pdf_file" required accept=".pdf">
+            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px;">
+                <input type="text" name="authors" placeholder="Autores (ex: Silva et al.)">
+                <input type="text" name="year" placeholder="Ano">
+            </div>
+            <input type="text" name="title" placeholder="Título (opcional, tenta automático)">
+            <button class="btn" style="width:100%;">SALVAR NA BIBLIOTECA</button>
+        </form>
+        <button class="btn" style="background:#888; width:100%; margin-top:10px;" onclick="toggleModal('addRefModal')">CANCELAR</button>
+    </div>
 </div>
 
 {% elif mode == 'writer' %}
 <div class="container">
-    <h3>📝 Sci-Writer</h3>
-    <p style="color:var(--subtext); font-size:0.9rem;">Tap a category to insert academic connectors.</p>
-    
+    <h3>Sci-Writer</h3>
     <div class="writer-toolbar">
-        {% for category, items in connectors.items() %}
-            <span class="writer-tag" onclick="toggleConnectors('cat_{{loop.index}}')">{{ category.split('.')[1] }}</span>
+        {% for cat, items in connectors.items() %}
+        <span class="writer-tag">{{ cat }}</span>
         {% endfor %}
     </div>
-
-    {% for category, items in connectors.items() %}
-    <div id="cat_{{loop.index}}" class="connector-list">
-        {% for item in items %}
-            <div class="connector-item" onclick="insertText('{{item.en}}')">
-                <b>{{item.en}}</b><br><small style="color:var(--subtext)">{{item.pt}}</small>
-            </div>
-        {% endfor %}
-    </div>
-    {% endfor %}
-
-    <textarea id="writerArea" class="text-area-box" style="height:300px;" placeholder="Start writing your abstract here..."></textarea>
-    <div style="display:flex; gap:10px; margin-top:10px;">
-        <button class="btn" style="flex:1;" onclick="speak(document.getElementById('writerArea').value)">🔊 Listen</button>
-        <button class="btn" style="flex:1; background:#27ae60;" onclick="navigator.clipboard.writeText(document.getElementById('writerArea').value); alert('Copied!');">📋 Copy</button>
-    </div>
+    <textarea class="text-area-box" placeholder="Escreva seu artigo aqui..."></textarea>
 </div>
-
-{% elif mode == 'summarizer' %}
-<div class="container"><h3>Smart Summarizer</h3><form action="/summarizer" method="POST" enctype="multipart/form-data"><div class="card"><label class="checker-label">Upload Batch (NBIB/RIS) or PDF</label><input type="file" name="nbib_file" multiple accept=".nbib,.ris,.txt,.pdf" style="margin-bottom:10px;"><div class="arrow-separator">OR</div><label class="checker-label">Paste Text</label><textarea name="text_input" class="text-area-box" style="height:100px;"></textarea><button class="btn" style="width:100%; margin-top:15px;">PROCESS</button></div></form>{% if batch_results %}{% for res in batch_results %}<div class="card" style="margin-top:20px;"><h4>{{res.title}}</h4><div class="sentence-block" style="border:none; padding:0;">{{ res.formatted_html | safe }}</div><details style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);"><summary style="cursor:pointer; color:var(--accent);">🇧🇷 Tradução</summary><p>{{ res.translation }}</p></details></div>{% endfor %}{% endif %}</div>
-
-{% elif mode == 'phrases' %}
-<div class="container"><h3>Phrasebank</h3><p style="font-size:0.9rem; color:var(--subtext);">Tap phrase for Audio. Use Mic for Shadowing.</p>{% for sec, list_phrases in phrases.items() %}<div class="card"><div style="background:#eef2f3; padding:10px; border-radius:8px; margin-bottom:10px; font-weight:bold; color:var(--accent);">{{sec}}</div>{% for p in list_phrases %}<div class="sentence-block" onclick="prepare(this)"><button class="btn shadow-btn" onclick="toggleShadow(this, event)">🎤</button><div style="margin-right:50px;">{% for w in p.en.split() %}<span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span> {% endfor %}<br><small style="color:var(--subtext); font-style:italic;">{{p.pt}}</small></div></div>{% endfor %}</div>{% endfor %}</div>
 
 {% elif mode == 'search' %}
-<div class="container"><h3>PubMed Search</h3><form action="/search" method="POST"><div class="checker-box"><input type="text" name="query" placeholder="e.g. 'Cancer'..." value="{{query}}"><button class="btn" style="width:100%;">SEARCH</button></div></form>{% if results %}{% for r in results %}<div class="card" style="margin-top:15px;"><b style="color:var(--accent);">{{r.journal}}</b><h4>{{r.title}}</h4><div style="max-height:80px; overflow:hidden; font-size:0.9rem;">{{r.abstract}}</div><div style="display:flex; gap:10px; margin-top:10px;"><form action="/summarizer" method="POST" style="flex:1;"><input type="hidden" name="text_input" value="{{r.abstract}}"><input type="hidden" name="title_input" value="{{r.title}}"><button class="btn" style="background:#27ae60; width:100%; font-size:0.8rem;">⚡ PROCESS</button></form><form action="/save_article" method="POST" style="flex:1;"><input type="hidden" name="abstract" value="{{r.abstract}}"><input type="hidden" name="title" value="{{r.title}}"><button class="btn" style="background:#3498db; width:100%; font-size:0.8rem;">💾 SAVE</button></form></div></div>{% endfor %}{% endif %}</div>
-
-{% elif mode == 'read' %}
-<div class="container"><div class="card" style="text-align:center; background:#f3e5f5; border:1px solid #9b59b6; margin-bottom:20px;"><h3>🎧 Sci-Podcast</h3><a href="/podcast/{{story.id}}" class="btn" style="background:#8e44ad; width:100%; display:block; text-decoration:none;">DOWNLOAD MP3</a></div>{% for s in story.sentences %}<div class="sentence-block" onclick="prepare(this)"><b>{{s.en}}</b><br><small>{{s.pt}}</small></div>{% endfor %}</div>
-
-{% elif mode == 'study_play' %}
-<div class="container">{% if card %}<div class="card" style="text-align:center;padding:30px;"><small>{{deck.name}}</small><h1>{{card.front}}</h1><p style="color:var(--accent);">{{card.ipa}}</p><div id="ansBox" style="display:none;margin-top:20px;border-top:1px dashed #ccc;padding-top:20px;"><h2 style="color:#2ecc71;">{{card.back}}</h2><div style="display:flex; gap:10px; margin-top:20px;"><button class="srs-btn" style="background:var(--heat-0);" onclick="submitRating('hard')">Hard</button><button class="srs-btn" style="background:var(--heat-2);" onclick="submitRating('good')">Good</button><button class="srs-btn" style="background:var(--heat-3);" onclick="submitRating('easy')">Easy</button></div></div></div><div style="display:flex;flex-direction:column;gap:10px;"><button class="btn" onclick="speak('{{card.front}}')">📢 LISTEN</button><button class="btn" style="background:#34495e" onclick="document.getElementById('ansBox').style.display='block'">SHOW ANSWER</button></div>{% else %}<div class="card" style="text-align:center;padding:40px;"><h3>🎉 All done!</h3><a href="/" class="btn">HOME</a></div>{% endif %}</div>
-
-{% elif mode == 'vocab_list' %}
-<div class="container"><h3>My Vocabulary</h3><div class="card">{% for c in cards %}<div class="word-row"><div><b>{{c.front}}</b> <span style="color:var(--accent);">{{c.ipa}}</span><br><small>{{c.back}}</small></div><div><button class="btn" style="padding:5px;" onclick="speak('{{c.front}}')">🔊</button><a href="/delete_card/{{c.id}}" class="btn" style="background:#e74c3c; padding:5px;">🗑️</a></div></div>{% else %}<p>No words.</p>{% endfor %}</div></div>
-
-{% elif mode == 'hub' %}
-<div class="container"><h3 style="text-align:center;">Research Hub</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">{% for link in links %}<div class="card hub-card" onclick="window.open('{{link.url}}','_blank')"><div style="font-size:2.5rem;">{{link.icon}}</div><b>{{link.name}}</b></div>{% endfor %}</div></div>
-{% endif %}
-
-<div class="fab" onclick="openManualAdd()">➕</div>
-<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸 US</option><option value="co.uk">🇬🇧 UK</option></select><input type="range" min="0.5" max="1.5" step="0.1" value="1.0" oninput="rate=this.value; if(curAud){curAud.playbackRate=this.value;}"></div></div>
-
-<div id="mod" class="modal"><form action="/adicionar_vocab" method="POST"><input type="text" id="fIn" name="term" placeholder="Type term..."><button class="btn">SAVE</button><button type="button" class="btn" style="background:#888;margin-top:10px;" onclick="document.getElementById('mod').style.display='none'">CLOSE</button></form></div>
-
-<div id="dictMod" class="modal">
-    <form onsubmit="return false;">
-        <div class="modal-header" id="dictWord">Word</div>
-        <span class="modal-sub" id="dictTrans">Loading...</span>
-        <div class="dict-actions">
-            <button class="btn" style="flex:1;" onclick="playDictWord()">🔊 Listen</button>
-            <button class="btn" style="flex:1; background:#27ae60;" onclick="saveFromDict()">💾 Save</button>
-        </div>
-        <button class="btn" style="background:#888; width:100%; margin-top:10px;" onclick="document.getElementById('dictMod').style.display='none'">CLOSE</button>
-        <input type="hidden" id="save_f"><input type="hidden" id="save_b">
+<div class="container">
+    <h3>PubMed Search</h3>
+    <form action="/search" method="POST">
+        <input type="text" name="query" placeholder="Termos de busca...">
+        <button class="btn" style="width:100%;">BUSCAR ARTIGOS</button>
     </form>
+    
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
+        {% for link in links %}
+        <div class="card hub-card" onclick="window.open('{{link.url}}', '_blank')">
+            <div style="font-size:2rem;">{{link.icon}}</div>
+            <b>{{link.name}}</b>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 
-</body></html>
+{% endif %}
+
+</body>
+</html>
