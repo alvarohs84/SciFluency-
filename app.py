@@ -247,27 +247,26 @@ def parse_nbib_bulk(content):
 def format_abstract_smart(text):
     if not text: return ""
     formatted = text
-    # Destaque de seções
+    
+    # Limpeza simples para evitar poluição visual do PDF
+    # Substitui quebras de linha excessivas por espaço
+    formatted = re.sub(r'\s+', ' ', formatted)
+    
+    # Destaque de seções (Simplificado para <b> sem style inline que quebra o HTML)
     sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
     for sec in sections:
+        # Usa regex para encontrar a seção e colocar em negrito simples
         pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
-        if pattern.search(formatted):
-            formatted = pattern.sub(r"<br><br><b style='color:#2c3e50;'>\1</b>", formatted)
+        formatted = pattern.sub(r"<br><br><b>\1</b>", formatted)
     
     sentences = re.split(r'(?<=[.!?])\s+', formatted)
     final_html = ""
     for sent in sentences:
         if len(sent.strip()) > 1:
-            words_html = ""
-            for word in sent.split():
-                clean_w = re.sub(r"[^\w]", "", word) 
-                if clean_w:
-                    words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
-                else:
-                    words_html += word + " "
-            
-            # ATENÇÃO: Aqui definimos a estrutura que o JS vai ler
-            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
+            # REMOVIDO AQUI A LÓGICA DE SPAN POR PALAVRA
+            # Agora criamos apenas um bloco clicável para a frase inteira.
+            # Isso elimina o erro de visualização "polluted" e simplifica a leitura.
+            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px; padding:8px; cursor:pointer; line-height:1.6;'>{sent}</div>"
     return final_html
 
 # --- ROTAS ---
@@ -681,7 +680,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (KARAOKE HARDWARE SYNC) ---
+# --- FRONTEND (VISUAL LIMPO E ROBUSTO) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -698,9 +697,7 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bot
 .card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:16px;border:1px solid var(--border);box-shadow:0 4px 10px var(--shadow);}
 .btn{background:var(--accent);color:#fff;border:none;padding:12px 20px;border-radius:25px;font-weight:bold;cursor:pointer;}
 .sentence-block{padding:18px;margin-bottom:12px;border-left:5px solid transparent;cursor:pointer;background:var(--card);border-radius:8px; position: relative;}
-.k-sent { cursor: pointer; transition: background-color 0.2s; padding: 2px 0; border-radius: 4px; }
-.k-sent:hover { background-color: #e1f5fe; color: #000; }
-.word-active { background-color: #ffeb3b !important; color: #000; box-shadow: 0 0 5px #ffeb3b; }
+.sentence-active { background-color: #e1f5fe; border-left: 5px solid var(--accent); }
 .player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
 .controls-row{display:flex;gap:15px;align-items:center;}
 input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px solid var(--border);border-radius:10px; background:var(--input); color:var(--text);}
@@ -733,13 +730,6 @@ input,textarea,select{width:100%;padding:12px;margin-bottom:10px;border:1px soli
 .shadow-btn { float: right; margin-left: 10px; width: 40px; height: 40px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; background: #ecf0f1; color: #333; }
 .shadow-recording { background: #e74c3c !important; color: white; animation: pulse 1.5s infinite; }
 
-.word-span { transition: 0.1s; border-bottom: 1px dotted transparent; }
-body.mode-read .word-span { pointer-events: none; } 
-body.mode-read .k-sent { cursor: pointer; }
-body.mode-mine .k-sent { pointer-events: none; }
-body.mode-mine .word-span { pointer-events: auto; cursor: context-menu; border-bottom: 2px dotted #e67e22; color: #d35400; }
-body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radius: 3px; }
-
 /* QUIZ STYLES */
 .quiz-hidden { background: #f1c40f; color: transparent; border-radius: 4px; padding: 0 5px; cursor: pointer; user-select: none; border-bottom: 2px solid #d35400; font-size: 0.9em; min-width: 30px; display: inline-block; text-align: center; }
 .quiz-hidden:hover { background: #f39c12; }
@@ -748,7 +738,6 @@ body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radi
 </style>
 <script>
 let curAud = null;
-let currentSpans = [];
 let rate = 1.0;
 let acc = 'com'; 
 let shadowRec = null; 
@@ -759,11 +748,8 @@ function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
-// --- ESTRATÉGIA DE SINCRONIZAÇÃO POR HARDWARE (TimeUpdate) ---
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
-
     const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
     const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
 
@@ -779,52 +765,6 @@ async function speak(text){
         curAud = new Audio(url); 
         curAud.playbackRate = rate; 
         
-        // --- LÓGICA DE MAPEAR PALAVRAS (REVISADA) ---
-        // 1. O texto do audio é 'cleanTxt'.
-        // 2. Os spans visuais devem corresponder a esse texto.
-        // O truque: calcular a proporção de cada palavra visual no total de caracteres
-        
-        let totalChars = 0;
-        let wordMap = []; 
-        
-        // Mapeia onde cada palavra visual começa e termina em caracteres
-        currentSpans.forEach(span => {
-            let len = span.innerText.length;
-            wordMap.push({
-                el: span,
-                start: totalChars,
-                end: totalChars + len
-            });
-            // Adiciona 1 pq o TTS do Google lê espaços implicitamente
-            totalChars += len + 1; 
-        });
-
-        // Evento que dispara várias vezes por segundo enquanto toca
-        curAud.ontimeupdate = () => {
-            if(!curAud.duration) return;
-            
-            // Qual porcentagem do áudio já tocou? (0.0 a 1.0)
-            let progress = curAud.currentTime / curAud.duration;
-            
-            // Em qual caractere do texto estamos?
-            let currentChar = Math.floor(progress * totalChars);
-            
-            // Acha a palavra correspondente a esse caractere
-            // Otimização: remove highlight antigo antes de buscar o novo
-            let found = false;
-            for(let w of wordMap) {
-                if(currentChar >= w.start && currentChar < w.end) { // < w.end para não pegar o espaço
-                    if (!w.el.classList.contains('word-active')) {
-                        document.querySelectorAll('.word-active').forEach(old => old.classList.remove('word-active'));
-                        w.el.classList.add('word-active');
-                    }
-                    found = true;
-                    break; 
-                }
-            }
-            if(!found) document.querySelectorAll('.word-active').forEach(old => old.classList.remove('word-active'));
-        };
-
         curAud.onloadedmetadata = () => { 
             btn.innerText='⏸';
             curAud.play();
@@ -832,7 +772,7 @@ async function speak(text){
         
         curAud.onended = () => { 
             btn.innerText='▶'; 
-            document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
+            document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
         }; 
         
     } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
@@ -852,25 +792,15 @@ function togglePlay(){
 
 function prepare(el){ 
     if(curAud){curAud.pause();} 
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
+    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
     
-    currentSpans = Array.from(el.querySelectorAll('.word-span')); 
+    // Destaca a frase inteira
+    el.classList.add('sentence-active');
     
-    // Se não achou spans (ex: modo leitura simples), tenta spans de frases
-    if (currentSpans.length === 0) {
-        let textToRead = el.innerText;
-        speak(textToRead);
-        return; // Sai se não tiver palavras individuais para mapear
-    }
-    
-    // Constrói o texto EXATO que vai pro áudio baseado nos spans visuais
-    // Isso garante que o mapa de caracteres do JS bata com o áudio gerado
-    let textToRead = currentSpans.map(s => s.innerText).join(" ");
-    
+    let textToRead = el.innerText; 
     speak(textToRead); 
 }
 
-function wordClick(e, word) { e.stopPropagation(); if(curAud){ curAud.pause(); } openAdd(word); }
 function openAdd(w){ document.getElementById("mod").style.display="block"; const inp = document.getElementById("fIn"); inp.value = w; inp.removeAttribute('readonly'); fetchTranslation(w); }
 function fetchTranslation(w) { fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>document.getElementById('bIn').value=d.t); }
 function refreshTrans() { const w = document.getElementById("fIn").value; fetchTranslation(w); }
@@ -880,7 +810,6 @@ function nextWord() { if(wordPool.length > 0) { const w = wordPool[Math.floor(Ma
 function toggleShadow(btn, e) {
     e.stopPropagation();
     if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
-    
     if (btn.classList.contains('shadow-recording')) {
         if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
         btn.classList.remove('shadow-recording');
