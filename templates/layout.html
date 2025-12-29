@@ -4,188 +4,212 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
 <style>
-:root { --primary: #2980b9; --sec: #2c3e50; --bg: #f5f6fa; --card: #fff; --highlight: #ffeaa7; }
-body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--sec); margin: 0; padding-bottom: 80px; }
-.header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+/* VARIÁVEIS VISUAIS (CLEAN) */
+:root { --primary: #0984e3; --sec: #2d3436; --bg: #f5f6fa; --card: #fff; --highlight: #ffeaa7; --research: #6c5ce7; }
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--sec); margin: 0; padding-bottom: 100px; }
+body.dark-mode { --bg: #2d3436; --card: #353b48; --sec: #dfe6e9; }
+
+/* ESTRUTURA SIDEBAR + HEADER */
+.header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; align-items: center;}
 .container { padding: 20px; max-width: 800px; margin: 0 auto; }
+.sidebar { height: 100%; width: 0; position: fixed; top: 0; left: 0; background: var(--card); overflow-x: hidden; transition: 0.3s; padding-top: 60px; z-index: 200; box-shadow: 2px 0 100px rgba(0,0,0,0.2); }
+.sidebar a { padding: 10px 25px; text-decoration: none; font-size: 1rem; color: var(--sec); display: block; border-bottom: 1px solid #eee; }
+.sidebar-header { font-weight: bold; color: #999; font-size: 0.8rem; padding: 15px 25px 5px; margin-top: 10px; }
+
+/* CARTÕES E BOTÕES */
 .card { background: var(--card); padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
-.btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; text-decoration: none; display: inline-block; }
-.btn-del { background: #e74c3c; padding: 5px 10px; font-size: 0.8em; }
+.btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
+.btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+.fab { position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
 
-/* LEITURA & KARAOKE */
-.sentence-block { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; line-height: 1.6; }
-.sentence-active { background: #e1f5fe; border-left: 5px solid var(--primary); }
-.word-span { cursor: pointer; padding: 2px; border-radius: 3px; }
-.word-span:hover { background: #dfe6e9; }
-.word-active { background: var(--highlight); color: black; font-weight: bold; transform: scale(1.1); display: inline-block; }
+/* KARAOKE & LEITURA (O QUE VOCÊ SENTIU FALTA) */
+.sentence-block { padding: 15px; margin-bottom: 10px; cursor: pointer; line-height: 1.8; border-radius: 8px; transition: 0.2s; }
+.sentence-active { background: #e1f5fe; border-left: 5px solid var(--primary); transform: scale(1.02); }
+.word-span { cursor: pointer; padding: 2px 0; border-bottom: 1px dotted transparent; }
+.word-span:hover { background: #fdcb6e; border-radius: 3px; }
+.word-active { background: var(--highlight) !important; color: black; box-shadow: 0 0 8px var(--highlight); border-radius: 3px; font-weight: bold; }
 
-/* NAVBAR FIXA NO RODAPÉ */
-.nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; z-index: 200; }
-.nav-item { text-align: center; color: var(--sec); text-decoration: none; font-size: 0.8em; }
-.nav-item span { display: block; font-size: 1.5em; }
+/* MODAL E PLAYER */
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center; }
+.modal-content { background: var(--card); padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; }
+.player { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); border-top: 1px solid #ddd; padding: 15px; z-index: 150; display: flex; justify-content: center; gap: 10px; }
 
-/* MODAL */
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
-.modal-content { background: white; padding: 25px; border-radius: 10px; width: 80%; max-width: 400px; text-align: center; }
-input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-
-/* PRONÚNCIA */
-.mic-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); color: white; font-size: 2em; border: none; margin: 20px; cursor: pointer; }
+/* EXTRAS */
+.mic-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); color: white; font-size: 2em; border: none; margin: 20px auto; cursor: pointer; display: block; }
 .mic-active { background: #e74c3c; animation: pulse 1s infinite; }
+.writer-tag { background: #eee; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; cursor: pointer; display: inline-block; margin: 2px; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231,76,60,0.7); } 100% { box-shadow: 0 0 0 15px rgba(231,76,60,0); } }
 </style>
 <script>
-let curAud = null, currentSpans = [], rate=1.0;
+// --- MOTOR KARAOKE (RESTAURADO) ---
+let curAud = null, currentSpans = [], karaokeTimeout = null, rate = 1.0;
 
-async function speak(text) {
+async function speak(text){ 
+    if(curAud) { curAud.pause(); curAud = null; } 
+    if(karaokeTimeout) clearTimeout(karaokeTimeout);
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+    
+    const btn = document.getElementById('playBtn'); if(btn) btn.innerText='⏳';
+    const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
+    
+    try {
+        const response = await fetch('/tts', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=com' }); 
+        const blob = await response.blob(); 
+        curAud = new Audio(URL.createObjectURL(blob)); 
+        curAud.playbackRate = rate; 
+        
+        curAud.onloadedmetadata = () => { 
+            if(btn) btn.innerText='⏸'; 
+            curAud.play(); 
+            if(currentSpans.length > 0) startWeightedKaraoke(curAud.duration);
+        }; 
+        curAud.onended = () => { if(btn) btn.innerText='▶'; if(karaokeTimeout) clearTimeout(karaokeTimeout); document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); }; 
+    } catch(e) { console.error(e); }
+}
+
+function startWeightedKaraoke(duration) {
+    let weights = currentSpans.map(s => s.innerText.length);
+    let totalTime = (duration * 1000) / rate;
+    let timePerChar = totalTime / weights.reduce((a,b)=>a+b, 0);
+    let index = 0;
+    
+    function next() {
+        if (index >= currentSpans.length) return;
+        if (index > 0) currentSpans[index-1].classList.remove('word-active');
+        currentSpans[index].classList.add('word-active');
+        let delay = weights[index] * timePerChar;
+        index++;
+        karaokeTimeout = setTimeout(next, delay);
+    }
+    next();
+}
+
+function prepare(el){
     if(curAud) curAud.pause();
+    document.querySelectorAll('.sentence-active').forEach(s => s.classList.remove('sentence-active'));
     document.querySelectorAll('.word-active').forEach(w => w.classList.remove('word-active'));
     
-    // Remove tags HTML para o TTS
-    const clean = text.replace(/<[^>]*>/g, "");
-    
-    const res = await fetch('/tts', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'text='+encodeURIComponent(clean)+'&accent=com'});
-    const blob = await res.blob();
-    curAud = new Audio(URL.createObjectURL(blob));
-    curAud.playbackRate = rate;
-    
-    // KARAOKE VISUAL
-    if(currentSpans.length > 0) {
-        let duration = 0;
-        curAud.onloadedmetadata = () => {
-            duration = curAud.duration;
-            animateKaraoke(duration);
-        };
-    }
-    curAud.play();
-}
-
-function animateKaraoke(duration) {
-    let totalChars = currentSpans.map(s => s.innerText.length).reduce((a,b)=>a+b, 0);
-    let timePerChar = (duration * 1000) / totalChars;
-    let accumulatedTime = 0;
-    
-    currentSpans.forEach((span, i) => {
-        let delay = accumulatedTime;
-        let wordTime = span.innerText.length * timePerChar;
-        setTimeout(() => {
-            if(i>0) currentSpans[i-1].classList.remove('word-active');
-            span.classList.add('word-active');
-        }, delay);
-        accumulatedTime += wordTime;
-    });
-    
-    setTimeout(() => {
-        if(currentSpans.length>0) currentSpans[currentSpans.length-1].classList.remove('word-active');
-    }, duration * 1000);
-}
-
-function prepare(el) {
-    document.querySelectorAll('.sentence-active').forEach(s => s.classList.remove('sentence-active'));
     el.classList.add('sentence-active');
+    // MÁGICA: PEGA OS SPANS DENTRO DA FRASE
     currentSpans = Array.from(el.querySelectorAll('.word-span'));
+    
+    // Se não tiver spans (modo texto puro), cria on-the-fly? Não, o backend já cria.
     speak(el.innerText);
 }
 
+// --- FERRAMENTAS ---
 function mineWord(e, w) {
     e.stopPropagation();
     if(curAud) curAud.pause();
-    document.getElementById('dictModal').style.display = 'flex';
-    document.getElementById('dictWord').innerText = w;
-    document.getElementById('dictTrans').innerText = '...';
-    fetch('/translate?w='+w).then(r=>r.json()).then(d => {
-        document.getElementById('dictTrans').innerText = d.t;
-        document.getElementById('saveFront').value = w;
-        document.getElementById('saveBack').value = d.t;
+    document.getElementById("dictModal").style.display = "flex";
+    document.getElementById("dictWord").innerText = w;
+    document.getElementById("dictTrans").innerText = "...";
+    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{
+        document.getElementById("dictTrans").innerText = d.t;
+        document.getElementById("saveF").value = w;
     });
 }
-
 function saveCard() {
-    const f = document.getElementById('saveFront').value;
-    const b = document.getElementById('saveBack').value;
-    fetch('/add_card', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`front=${f}&back=${b}`})
-    .then(() => { document.getElementById('dictModal').style.display='none'; alert('Salvo!'); });
+    const w = document.getElementById("saveF").value;
+    const fd = new FormData(); fd.append('term', w);
+    fetch('/adicionar_vocab', {method:'POST', body:fd}).then(()=>{
+        document.getElementById("dictModal").style.display='none'; alert("Salvo!");
+    });
 }
+function playDict() { speak(document.getElementById("dictWord").innerText); }
 
-// PRONÚNCIA
+function openNav(){document.getElementById("side").style.width="280px";}
+function closeNav(){document.getElementById("side").style.width="0";}
+function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 function startRec(target) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!SR) return alert("Use Chrome");
-    const rec = new SR(); rec.lang='en-US';
-    const btn = document.getElementById('mic');
-    rec.onstart = () => { btn.classList.add('mic-active'); };
-    rec.onend = () => { btn.classList.remove('mic-active'); };
-    rec.onresult = (e) => {
-        const spoken = e.results[0][0].transcript.toLowerCase().replace(/[^a-z]/g, '');
-        const cleanT = target.toLowerCase().replace(/[^a-z]/g, '');
-        document.getElementById('fb').innerHTML = (spoken == cleanT) ? "✅ PERFEITO!" : `❌ Ouvi: ${spoken}`;
+    const r = new SR(); r.lang='en-US';
+    const b = document.getElementById('mic');
+    r.onstart=()=>{b.classList.add('mic-active')}; r.onend=()=>{b.classList.remove('mic-active')};
+    r.onresult=(e)=>{
+        const s = e.results[0][0].transcript.toLowerCase().replace(/[^a-z]/g,'');
+        const t = target.toLowerCase().replace(/[^a-z]/g,'');
+        document.getElementById('fb').innerHTML = (s==t) ? "✅ YES!" : "❌ " + s;
     };
-    rec.start();
+    r.start();
 }
+function insertText(t) { document.getElementById('paper').value += t + " "; }
 </script>
 </head>
 <body>
 
+<div id="side" class="sidebar">
+    <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2em;padding-right:20px;">&times;</a>
+    <a href="/">🏠 Início</a>
+    
+    <div class="sidebar-header">APRENDER INGLÊS</div>
+    <a href="/novo">✨ Novo Texto/PDF (Karaokê)</a>
+    <a href="/pronunciation">🎤 Treino de Fala</a>
+    <a href="/vocab_list">🗂️ Vocabulário</a>
+    <a href="/library_list">📖 Meus Textos Salvos</a>
+
+    <div class="sidebar-header">PESQUISA ACADÊMICA</div>
+    <a href="/ref_library">📚 Biblioteca de Referências</a>
+    <a href="/writer">📝 Assistente de Escrita</a>
+</div>
+
 <div class="header">
+    <span onclick="openNav()" style="font-size:1.5em;cursor:pointer;">☰</span>
     <h3>{{ app_name }}</h3>
-    <a href="/novo" class="btn">+ Novo</a>
+    <span onclick="toggleTheme()" style="font-size:1.5em;cursor:pointer;">🌙</span>
 </div>
 
-{% if mode == 'home' %}
+{% if mode == 'dashboard' %}
 <div class="container">
-    <div class="card" style="text-align:center; background:#e1f5fe;">
-        <h2>{{ vocab_count }}</h2>
-        <small>Palavras Aprendidas</small>
-        <br><br>
-        <a href="/vocab" class="btn">Revisar Agora</a>
-    </div>
-    <h3>Meus Textos</h3>
-    {% for s in stories %}
-    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-        <div onclick="window.location.href='/ler/{{s.id}}'" style="cursor:pointer; flex:1;">
-            <b>{{ s.title }}</b><br>
-            <small>{{ s.sentences|length }} frases</small>
+    <h3>Bem-vindo de volta!</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="card" onclick="window.location.href='/novo'" style="border-left:5px solid #0984e3; cursor:pointer;">
+            <b>📖 Estudar</b><br><small>Novo Texto</small>
         </div>
-        <a href="/delete_story/{{s.id}}" class="btn-del">X</a>
+        <div class="card" onclick="window.location.href='/ref_library'" style="border-left:5px solid #6c5ce7; cursor:pointer;">
+            <b>📚 Pesquisar</b><br><small>Gerenciar PDFs</small>
+        </div>
     </div>
-    {% endfor %}
+    
+    <div class="card">
+        <b>Seu Progresso</b>
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+            <div style="text-align:center;"><b>{{ stats.vocab }}</b><br><small>Palavras</small></div>
+            <div style="text-align:center;"><b>{{ stats.stories }}</b><br><small>Lições</small></div>
+            <div style="text-align:center;"><b>{{ stats.refs }}</b><br><small>Artigos</small></div>
+        </div>
+    </div>
 </div>
 
-{% elif mode == 'read' %}
+{% elif mode == 'read_interactive' %}
 <div class="container">
     <h3>{{ story.title }}</h3>
     {% for s in story.sentences %}
     <div class="sentence-block" onclick="prepare(this)">
-        {% for w in s.en.split() %}
-        <span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span>
-        {% endfor %}
+        {% for w in s.en.split() %}<span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span> {% endfor %}
         <br><small style="color:#7f8c8d">{{ s.pt }}</small>
     </div>
     {% endfor %}
 </div>
 
-{% elif mode == 'vocab' %}
-<div class="container">
-    {% for c in cards %}
-    <div class="card" style="display:flex; justify-content:space-between;">
-        <div onclick="speak('{{c.front}}')">
-            <b>{{c.front}}</b> <span style="color:#2980b9">{{c.ipa}}</span><br>
-            <small>{{c.back}}</small>
-        </div>
-        <a href="/delete_card/{{c.id}}" style="color:red;">X</a>
-    </div>
-    {% endfor %}
+{% elif mode == 'library_list' %}
+<div class="container"><h3>Meus Textos de Estudo</h3>
+{% for s in stories %}
+<div class="card" style="display:flex; justify-content:space-between;">
+    <div onclick="window.location.href='/ler/{{s.id}}'" style="cursor:pointer; flex:1;"><b>{{s.title}}</b><br><small>{{s.sentences|length}} frases</small></div>
+    <a href="/delete_story/{{s.id}}" style="color:red; padding:5px;">🗑️</a>
 </div>
+{% endfor %}</div>
 
 {% elif mode == 'pronunciation' %}
 <div class="container" style="text-align:center;">
-    <script>const words = {{ words_json | safe }}; let idx=0;</script>
-    <div class="card" style="padding:40px;">
+    <script>const words = {{ words_json | safe }};</script>
+    <div class="card" style="padding:30px;">
         <h1 id="pWord">Ready?</h1>
-        <p id="pIpa" style="color:#2980b9">...</p>
+        <p id="pIpa" style="color:var(--primary);">...</p>
         <button id="mic" class="mic-btn" onclick="startRec(document.getElementById('pWord').innerText)">🎤</button>
         <h3 id="fb">Toque e Fale</h3>
-        <br>
         <button class="btn" onclick="let w=words[Math.floor(Math.random()*words.length)]; document.getElementById('pWord').innerText=w.w; document.getElementById('pIpa').innerText=w.ipa; document.getElementById('fb').innerText='...';">Próxima ➡</button>
     </div>
 </div>
@@ -193,37 +217,62 @@ function startRec(target) {
 {% elif mode == 'new' %}
 <div class="container">
     <div class="card">
-        <h3>Adicionar Material</h3>
-        <form action="/novo" method="POST" enctype="multipart/form-data">
-            <label>Opção A: Colar Texto</label>
-            <textarea name="text_input" rows="5" placeholder="English text here..."></textarea>
-            <hr>
-            <label>Opção B: Enviar PDF</label>
-            <input type="file" name="file_input" accept=".pdf">
-            <br><br>
-            <button class="btn" style="width:100%">PROCESSAR E ESTUDAR</button>
+        <h3>Criar Lição de Estudo</h3>
+        <form action="/processar" method="POST" enctype="multipart/form-data">
+            <textarea name="texto_full" style="height:100px; width:100%;" placeholder="Cole texto aqui..."></textarea>
+            <p style="text-align:center;">OU</p>
+            <input type="file" name="arquivo_upload" multiple accept=".pdf">
+            <button class="btn" style="width:100%; margin-top:10px;">PROCESSAR E ESTUDAR</button>
         </form>
     </div>
 </div>
+
+{% elif mode == 'ref_library' %}
+<div class="container">
+    <h3>Artigos para Tese</h3>
+    <form action="/ref_library" method="POST" enctype="multipart/form-data" style="margin-bottom:20px;">
+        <input type="file" name="pdf_file" required> <button class="btn">Adicionar</button>
+    </form>
+    {% for r in references %}
+    <div class="card" style="border-left:5px solid #6c5ce7;">
+        <b>{{ r.title }}</b>
+        <div style="margin-top:10px;">
+            <a href="/read_pdf_ref/{{r.id}}" class="btn btn-sm">Estudar (Converter)</a>
+            <a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#e74c3c;">X</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% elif mode == 'writer' %}
+<div class="container">
+    <h3>Writer</h3>
+    <div style="overflow-x:auto; white-space:nowrap; margin-bottom:10px;">
+        {% for cat, items in connectors.items() %}
+            <span class="writer-tag" onclick="document.getElementById('list_{{loop.index}}').style.display='block'">{{cat}}</span>
+            <div id="list_{{loop.index}}" style="display:none; background:var(--card); position:absolute; border:1px solid #ccc; padding:10px;">
+                {% for i in items %}<div class="connector-item" onclick="insertText('{{i.en}}'); this.parentElement.style.display='none';">{{i.en}}</div>{% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    <textarea id="paper" style="width:100%; height:400px; padding:15px; line-height:1.6;"></textarea>
+</div>
+
+{% elif mode == 'vocab_list' %}
+<div class="container">{% for c in cards %}<div class="card"><b>{{c.front}}</b> <small>{{c.back}}</small> <button class="btn btn-sm" style="float:right;" onclick="speak('{{c.front}}')">🔊</button></div>{% endfor %}</div>
+
 {% endif %}
 
-<div id="dictModal" class="modal">
-    <div class="modal-content">
-        <h2 id="dictWord">...</h2>
-        <p id="dictTrans">...</p>
-        <input type="hidden" id="saveFront">
-        <input type="hidden" id="saveBack">
-        <button class="btn" onclick="saveCard()">Salvar Flashcard</button>
-        <br><br>
-        <button class="btn" style="background:#7f8c8d" onclick="document.getElementById('dictModal').style.display='none'">Fechar</button>
-    </div>
-</div>
+<div class="player"><button id="playBtn" class="btn" style="border-radius:50%; width:50px;" onclick="togglePlay()">▶</button></div>
 
-<div class="nav-bar">
-    <a href="/" class="nav-item"><span>🏠</span>Home</a>
-    <a href="/novo" class="nav-item"><span>➕</span>Novo</a>
-    <a href="/pronunciation" class="nav-item"><span>🎤</span>Falar</a>
-    <a href="/vocab" class="nav-item"><span>🗂️</span>Vocab</a>
-</div>
+<div id="dictModal" class="modal"><div class="modal-content">
+    <h2 id="dictWord">...</h2><p id="dictTrans">...</p>
+    <div style="display:flex; gap:10px;">
+        <button class="btn" onclick="playDict()">🔊</button>
+        <button class="btn" style="background:#27ae60;" onclick="saveCard()">SALVAR</button>
+    </div>
+    <button class="btn" style="background:#7f8c8d; margin-top:10px;" onclick="document.getElementById('dictModal').style.display='none'">FECHAR</button>
+    <input type="hidden" id="saveF">
+</div></div>
 
 </body></html>
