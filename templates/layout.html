@@ -5,141 +5,143 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
 <style>
-/* --- ESTILO HÍBRIDO (ESTUDO + PESQUISA) --- */
-:root { 
-    --bg: #f4f7f6; --card: #ffffff; --text: #2d3436; --subtext: #636e72; 
-    --accent: #0984e3; --border: #dfe6e9; --input: #f1f2f6; 
-    --learn: #00b894; --research: #6c5ce7; 
-}
-body.dark-mode { 
-    --bg: #1e1e1e; --card: #2d2d2d; --text: #ecf0f1; --subtext: #bdc3c7; 
-    --accent: #74b9ff; --border: #444; --input: #3d3d3d; 
-}
-body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:140px;color:var(--text); transition:0.3s;}
+/* --- CORES & BASE --- */
+:root { --bg: #f8f9fa; --card: #fff; --text: #2d3436; --subtext: #636e72; --accent: #0984e3; --border: #dfe6e9; --input: #f1f2f6; --highlight: #ffeaa7; }
+body.dark-mode { --bg: #2d3436; --card: #353b48; --text: #dfe6e9; --subtext: #b2bec3; --accent: #74b9ff; --border: #636e72; --input: #2d3436; --highlight: #e17055; }
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:120px;color:var(--text); transition:0.3s;}
 
 /* --- ESTRUTURA --- */
 .header{background:var(--card);padding:15px;border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:0;z-index:1000;}
-.container{padding:20px;max-width:900px;margin:0 auto;}
+.container{padding:20px;max-width:800px;margin:0 auto;}
 .sidebar{height:100%;width:0;position:fixed;top:0;left:0;background:var(--card);overflow-x:hidden;transition:0.3s;padding-top:60px;z-index:2000;box-shadow:2px 0 100px rgba(0,0,0,0.2); border-right:1px solid var(--border);}
-.sidebar-section { padding: 15px 25px 5px 25px; font-size: 0.8rem; font-weight: bold; color: var(--subtext); letter-spacing: 1px; margin-top: 10px; border-bottom: 2px solid var(--border); }
+.sidebar-section { padding: 15px 25px 5px 25px; font-size: 0.8rem; font-weight: bold; color: var(--subtext); letter-spacing: 1px; margin-top: 15px; border-bottom: 2px solid var(--border); }
 .sidebar a{padding:12px 25px;text-decoration:none;font-size:1rem;color:var(--text);display:block;border-bottom:1px solid var(--border);}
 .sidebar a:hover { background: var(--input); }
 
 /* --- COMPONENTES --- */
 .card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 5px rgba(0,0,0,0.05);}
-.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer; display:inline-block; text-decoration:none; width: 100%; box-sizing: border-box; text-align: center;}
+.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer; display:inline-block; text-decoration:none; width: 100%; text-align: center; box-sizing: border-box;}
 .btn-sm{padding:5px 10px; font-size:0.8rem; width: auto;}
-input, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input); color: var(--text); box-sizing: border-box;}
+.fab { position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
 
-/* --- DASHBOARD --- */
-.section-title { font-size: 1.2rem; font-weight: bold; color: var(--subtext); margin: 20px 0 10px 0; }
-.dash-stats { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 15px; }
-.stat-item { background: var(--card); border: 1px solid var(--border); padding: 10px; border-radius: 8px; min-width: 100px; text-align: center; }
-.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-.heat-day { aspect-ratio: 1; border-radius: 2px; }
+/* --- LEITURA CLÁSSICA (Karaoke) --- */
+.sentence-block { padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; line-height: 1.6; }
+.sentence-active { background-color: #e1f5fe; border-left: 5px solid var(--accent); }
+.word-span { cursor: pointer; border-bottom: 1px dotted transparent; }
+.word-span:hover { background: #fdcb6e; color: black; border-radius: 3px; }
+.word-active { background-color: var(--highlight) !important; color: black; box-shadow: 0 0 5px var(--highlight); border-radius: 3px; font-weight: bold; }
 
-/* --- LIBRARY & WRITER --- */
-.ref-card { padding: 15px; border-radius: 8px; margin-bottom: 10px; background: var(--card); border: 1px solid var(--border); border-left: 5px solid #f39c12; }
-.ref-card.done { border-left-color: #00b894; }
-.draft-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); border-left: 5px solid var(--research); cursor: pointer; }
-.paper-area { width: 100%; height: 60vh; padding: 20px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Georgia', serif; font-size: 1.1rem; line-height: 1.8; background: var(--input); color: var(--text); resize: none; box-sizing: border-box;}
+/* --- PRONÚNCIA --- */
+.mic-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); color: white; border: none; font-size: 2rem; cursor: pointer; display: block; margin: 20px auto; }
+.mic-active { background: #e74c3c; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
 
-/* --- LEITOR & KARAOKE --- */
-.sentence-block{padding:10px; margin-bottom:10px; cursor:pointer; line-height: 1.6;}
-.sentence-active { background-color: #e1f5fe; border-left: 4px solid var(--accent); color: #000; }
-body.dark-mode .sentence-active { background-color: #2c3e50; color: #fff; }
-.player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
-.controls-row{display:flex;gap:15px;align-items:center;}
-.fab { position: fixed; bottom: 100px; right: 20px; width: 56px; height: 56px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
-
-/* --- MODAIS --- */
+/* --- OUTROS --- */
 .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
 .modal-content { background-color: var(--card); padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; }
-.writer-tag { background: var(--bg); border: 1px solid var(--border); padding: 5px 12px; border-radius: 20px; cursor: pointer; display: inline-block; margin-right: 5px; margin-bottom: 5px; }
-.connector-item { padding: 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
 </style>
 <script>
-// --- MOTOR DE ÁUDIO NEURAL ---
-let curAud = null, rate = 1.0, acc = 'com'; 
-
+// --- FUNÇÕES GERAIS ---
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); }
 function toggleModal(id) { const m=document.getElementById(id); m.style.display=(m.style.display==='flex')?'none':'flex'; }
 
+// --- MOTOR DE ÁUDIO & KARAOKÊ ---
+let curAud = null, currentSpans = [], karaokeTimeout = null, rate = 1.0;
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
-    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active'));
-    const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
+    if(karaokeTimeout) clearTimeout(karaokeTimeout);
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+    
+    const btn = document.getElementById('playBtn'); if(btn) btn.innerText='⏳'; 
     const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
+    
     try { 
-        const response = await fetch('/tts', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=' + acc }); 
+        const response = await fetch('/tts', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=com' }); 
         const blob = await response.blob(); 
         const url = URL.createObjectURL(blob); 
         curAud = new Audio(url); curAud.playbackRate = rate; 
-        curAud.onloadedmetadata = () => { btn.innerText='⏸'; curAud.play(); }; 
-        curAud.onended = () => { btn.innerText='▶'; document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); }; 
-    } catch (e) { console.error(e); btn.innerText='⚠️'; } 
+        
+        curAud.onloadedmetadata = () => { 
+            if(btn) btn.innerText='⏸'; 
+            curAud.play(); 
+            if(currentSpans.length > 0) startWeightedKaraoke(curAud.duration); 
+        }; 
+        curAud.onended = () => { if(btn) btn.innerText='▶'; document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); }; 
+    } catch (e) { console.error(e); } 
 }
 
-function togglePlay(){ 
-    if(curAud){ if(curAud.paused){curAud.play(); document.getElementById('playBtn').innerText='⏸';} else{curAud.pause(); document.getElementById('playBtn').innerText='▶';} } 
-}
-
-// --- FUNÇÃO DE LEITURA (PDF/ARTIGOS) ---
-function prepare(el){ 
-    if(curAud){curAud.pause();} 
-    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
-    el.classList.add('sentence-active');
-    
-    // Seleção de palavra para dicionário (clique duplo ou seleção)
-    let textToRead = el.innerText;
-    speak(textToRead); 
-}
-
-// Ao selecionar texto, abrir dicionário
-document.addEventListener('selectionchange', () => {
-    const sel = window.getSelection();
-    if(sel.toString().length > 0 && sel.toString().length < 30) {
-        // Implementação futura: botão flutuante.
-        // Por enquanto, usamos clique no manual dictionary
+function startWeightedKaraoke(duration) {
+    if (currentSpans.length === 0) return;
+    let weights = currentSpans.map(s => s.innerText.length);
+    let totalTimeMs = (duration * 1000) / rate;
+    let timePerWeight = totalTimeMs / weights.reduce((a, b) => a + b, 0);
+    let index = 0;
+    function next() {
+        if (index >= currentSpans.length) { clearTimeout(karaokeTimeout); return; }
+        if (index > 0) currentSpans[index-1].classList.remove('word-active');
+        currentSpans[index].classList.add('word-active');
+        let delay = weights[index] * timePerWeight;
+        index++; karaokeTimeout = setTimeout(next, delay);
     }
-});
+    next();
+}
 
-function openDict(w) {
-    const m = document.getElementById("dictMod"); m.style.display = "flex";
+function prepare(el){ 
+    if(curAud){curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout);}
+    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active'));
+    
+    el.classList.add('sentence-active');
+    currentSpans = Array.from(el.querySelectorAll('.word-span'));
+    
+    speak(el.innerText);
+}
+
+// --- DICIONÁRIO ---
+function mineWord(e, w) { 
+    e.stopPropagation(); 
+    if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
+    document.getElementById("dictMod").style.display = "flex";
     document.getElementById("dictWord").innerText = w;
     document.getElementById("dictTrans").innerText = "...";
-    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{ 
-        document.getElementById("dictTrans").innerText = d.t; 
-        document.getElementById("save_f").value = w;
-    });
+    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{ document.getElementById("dictTrans").innerText = d.t; document.getElementById("save_f").value=w; });
 }
 function saveDict() {
     const w = document.getElementById("save_f").value;
     const fd = new FormData(); fd.append('term', w);
     fetch('/adicionar_vocab', {method:'POST', body:fd}).then(r=>r.json()).then(d=>{
-        document.getElementById("dictMod").style.display='none'; alert("Saved!");
+        document.getElementById("dictMod").style.display='none'; alert("Salvo!");
     });
 }
+function playDict() { speak(document.getElementById("dictWord").innerText); }
 
-// --- SCI-WRITER ---
-function insertText(text) {
-    const area = document.getElementById('paper');
-    if (area.selectionStart || area.selectionStart == '0') {
-        var start = area.selectionStart; var end = area.selectionEnd;
-        area.value = area.value.substring(0, start) + text + " " + area.value.substring(end, area.value.length);
-        area.selectionStart = area.selectionEnd = start + text.length + 1;
-    } else { area.value += text + " "; }
-    area.focus(); document.getElementById('connectors').style.display='none';
-}
-function onType(id) {
-    clearTimeout(window.saveTimer);
-    window.saveTimer = setTimeout(() => {
-        const fd = new FormData(); fd.append('content', document.getElementById('paper').value);
-        fetch('/writer/'+id, {method:'POST', body:fd});
-        document.getElementById('saveStatus').innerText = "Saved";
-    }, 2000);
+// --- PRONÚNCIA (SpeechRecognition) ---
+function startRec(word) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { alert("Use Chrome!"); return; }
+    
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    const btn = document.getElementById('micBtn');
+    const fb = document.getElementById('feedback');
+    
+    recognition.onstart = () => { btn.classList.add('mic-active'); fb.innerText = "Listening..."; };
+    recognition.onend = () => { btn.classList.remove('mic-active'); };
+    
+    recognition.onresult = (event) => {
+        const spoken = event.results[0][0].transcript.toLowerCase().replace(/[^a-z]/g, '');
+        const target = word.toLowerCase().replace(/[^a-z]/g, '');
+        if (spoken === target) {
+            fb.innerHTML = "<b style='color:#27ae60'>✅ Perfect!</b>";
+            new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg').play();
+        } else {
+            fb.innerHTML = "<b style='color:#e74c3c'>❌ Heard: " + spoken + "</b>";
+        }
+    };
+    recognition.start();
 }
 </script>
 </head>
@@ -147,126 +149,123 @@ function onType(id) {
 
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2rem;padding-right:20px;">&times;</a>
-    <a href="javascript:void(0)" onclick="toggleTheme()">🌙 Theme</a>
     <a href="/" style="background:var(--input);">🏠 Dashboard</a>
 
-    <div class="sidebar-section">🎓 RESEARCH</div>
-    <a href="/library">📚 My Library <span>Manage PDFs</span></a>
-    <a href="/search">🔍 Search Articles <span>PubMed</span></a>
-    <a href="/writer">📝 Thesis Writer <span>Draft Chapters</span></a>
+    <div class="sidebar-section">📖 ESTUDO & FONÉTICA</div>
+    <a href="/novo_texto">✨ Novo Texto (Karaokê)</a>
+    <a href="/pronunciation">🎤 Treino de Pronúncia</a>
+    <a href="/vocab_list">🗂️ Meus Flashcards</a>
 
-    <div class="sidebar-section">🇺🇸 ENGLISH</div>
-    <a href="/vocab_list">🗂️ Flashcards <span>Review Words</span></a>
-    <a href="/tutor">👩‍🏫 AI Tutor <span>Translator</span></a>
-    <a href="/pronunciation">🎤 Pronunciation <span>Lab</span></a>
-    <a href="/novo">✨ Manual Input <span>Copy/Paste</span></a>
+    <div class="sidebar-section">🎓 PESQUISA & PDF</div>
+    <a href="/library">📚 Minha Biblioteca</a>
+    <a href="/writer">📝 Assistente de Escrita</a>
 </div>
 
 <div class="header">
     <span onclick="openNav()" style="font-size:1.5rem;cursor:pointer;">☰</span>
     <h3 style="margin-left:20px; flex:1;">{{ app_name }}</h3>
-    <span onclick="toggleModal('dictMod')" style="font-size:1.2rem;cursor:pointer;">🔍</span>
+    <span onclick="toggleTheme()" style="font-size:1.5rem;cursor:pointer;">🌙</span>
 </div>
 
 {% if mode == 'dashboard' %}
 <div class="container">
-    <div class="section-title" style="color:var(--research);">🎓 Thesis Progress</div>
-    <div class="card" style="border-left: 5px solid var(--research);">
-        <h3 style="margin:0;">{{ project.title }}</h3>
-        <small>{{ project.target_journal }}</small>
-        <div class="dash-stats" style="margin-top:10px;">
-            <div class="stat-item"><b style="color:var(--accent);">{{ stats.refs }}</b><br><small>Refs</small></div>
-            <div class="stat-item"><b style="color:#f39c12;">{{ stats.to_read }}</b><br><small>To Read</small></div>
+    <h3>Bem-vindo ao SciFluency</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="card" onclick="window.location.href='/novo_texto'" style="cursor:pointer; border-left:5px solid #0984e3;">
+            <b>📖 Colar Texto</b><br><small>Estude com Karaokê</small>
+        </div>
+        <div class="card" onclick="window.location.href='/library'" style="cursor:pointer; border-left:5px solid #e17055;">
+            <b>📚 Biblioteca</b><br><small>Gerenciar PDFs</small>
+        </div>
+        <div class="card" onclick="window.location.href='/pronunciation'" style="cursor:pointer; border-left:5px solid #00b894;">
+            <b>🎤 Pronúncia</b><br><small>Treinar Fala</small>
+        </div>
+        <div class="card" onclick="window.location.href='/writer'" style="cursor:pointer; border-left:5px solid #6c5ce7;">
+            <b>📝 Escrever</b><br><small>Tese e Artigos</small>
         </div>
     </div>
+    <div class="card">
+        <b>Progresso ({{ stats.vocab }} palavras)</b>
+        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:10px;">
+            {% for d in stats.heatmap %}<div style="height:20px; background:{{d.color}}; border-radius:3px;"></div>{% endfor %}
+        </div>
+    </div>
+</div>
 
-    <h4>Chapters</h4>
-    {% for draft in drafts %}
-    <div class="draft-card" onclick="window.location.href='/writer/{{draft.id}}'">
-        <div><strong>{{ draft.section_name }}</strong><br><small>Edit</small></div><span>✎</span>
+{% elif mode == 'read_classic' %}
+<div class="container">
+    <h3>{{ story.title }}</h3>
+    {% for s in story.sentences %}
+    <div class="sentence-block" onclick="prepare(this)">
+        {% for w in s.en.split() %}<span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span> {% endfor %}
+        <br><small style="color:var(--subtext);">{{ s.pt }}</small>
     </div>
     {% endfor %}
-
-    <div class="section-title" style="color:var(--learn);">🇺🇸 Study Stats</div>
-    <div class="card" style="border-left: 5px solid var(--learn);">
-        <div style="display:flex; justify-content:space-between;">
-            <div><b>{{ stats.vocab }}</b> Saved Words</div>
-            <div class="heatmap">{% for day in stats.heatmap %}<div class="heat-day" style="background:{{day.color}}"></div>{% endfor %}</div>
-        </div>
-        <a href="/jogar/my_vocab" class="btn" style="background:var(--learn); margin-top:10px;">REVIEW CARDS</a>
-    </div>
 </div>
 
-{% elif mode == 'library' %}
+{% elif mode == 'read_pdf' %}
 <div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3>My Articles</h3>
-        <button class="btn" onclick="toggleModal('addRefModal')" style="width:auto;">+ PDF</button>
-    </div>
-    {% for ref in references %}
-    <div class="ref-card {{ ref.status }}">
-        <div style="display:flex; justify-content:space-between; color:var(--subtext);"><span>{{ ref.year }}</span><span>{{ ref.status|upper }}</span></div>
-        <h4 style="margin:5px 0;">{{ ref.title }}</h4>
-        <small>{{ ref.authors }}</small>
-        <div style="margin-top:10px; display:flex; gap:5px; border-top:1px solid var(--border); padding-top:10px;">
-            <a href="/read_ref/{{ref.id}}" class="btn btn-sm" style="background:var(--accent);">📖 READ</a>
-            <a href="/update_status/{{ref.id}}/done" class="btn btn-sm" style="background:#00b894;">Done</a>
-            <a href="/delete_ref/{{ref.id}}" class="btn btn-sm" style="background:#d63031;">Del</a>
-        </div>
-    </div>
-    {% else %}<p style="text-align:center;">No articles found.</p>{% endfor %}
-</div>
-<div id="addRefModal" class="modal"><div class="modal-content"><h3>Upload PDF</h3><form action="/library" method="POST" enctype="multipart/form-data"><input type="file" name="pdf_file" required><input type="text" name="title" placeholder="Title"><button class="btn">UPLOAD</button></form><button class="btn" onclick="toggleModal('addRefModal')" style="background:#888; margin-top:10px;">CANCEL</button></div></div>
-
-{% elif mode == 'reader_tool' %}
-<div class="container">
-    <button class="btn" onclick="window.history.back()" style="background:#34495e; margin-bottom:10px;">⬅ Back to Library</button>
-    <h3 style="margin-top:0;">{{ title }}</h3>
-    <div style="font-size:1.1rem; line-height:1.6; background:var(--card); padding:20px; border-radius:8px;">
+    <button class="btn" onclick="window.history.back()" style="background:#34495e; margin-bottom:10px;">⬅ Voltar</button>
+    <h3>{{ title }}</h3>
+    <div style="background:var(--card); padding:20px; border-radius:8px; line-height:1.8;">
         {{ content | safe }}
     </div>
 </div>
 
-{% elif mode == 'writer' %}
+{% elif mode == 'pronunciation' %}
 <div class="container">
-    <div style="display:flex; justify-content:space-between;"><h3>{{ draft.section_name }}</h3><small id="saveStatus">Saved</small></div>
-    <div style="overflow-x:auto; white-space:nowrap; margin-bottom:10px;">
-        <span class="writer-tag" onclick="document.getElementById('connectors').style.display='block'">+ Connectors</span>
+    <script>const words = {{ words_json | safe }}; let curIdx=0;</script>
+    <div class="card" style="text-align:center; padding:40px;">
+        <h1 id="targetW">Ready</h1>
+        <p id="targetIPA" style="color:var(--accent);">...</p>
+        <button id="micBtn" class="mic-btn" onclick="startRec(document.getElementById('targetW').innerText)">🎤</button>
+        <p id="feedback">Toque no microfone e fale</p>
+        <button class="btn" onclick="nextW()" style="margin-top:20px;">Próxima ➡</button>
     </div>
-    <div id="connectors" class="connector-list">
-        {% for cat, items in connectors.items() %}
-            <div style="background:#eee; padding:5px;"><b>{{cat}}</b></div>
-            {% for item in items %}<div class="connector-item" onclick="insertText('{{item.en}}')">{{item.en}}</div>{% endfor %}
-        {% endfor %}
-        <button class="btn" onclick="document.getElementById('connectors').style.display='none'" style="margin-top:10px;">CLOSE</button>
-    </div>
-    <textarea id="paper" class="paper-area" oninput="onType({{draft.id}})">{{ draft.content }}</textarea>
+    <script>
+    function nextW(){
+        const w = words[Math.floor(Math.random()*words.length)];
+        document.getElementById('targetW').innerText = w.w;
+        document.getElementById('targetIPA').innerText = w.ipa;
+        document.getElementById('feedback').innerText = "Toque e fale...";
+    }
+    nextW();
+    </script>
 </div>
 
-{% elif mode == 'study_play' %}
-<div class="container">{% if card %}<div class="card" style="text-align:center;padding:40px;"><h1>{{card.front}}</h1><div id="ansBox" style="display:none; margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;"><h2 style="color:#2ecc71;">{{card.back}}</h2><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn" style="background:#d63031;" onclick="submitRating('hard')">Hard</button><button class="btn" style="background:#00b894;" onclick="submitRating('easy')">Easy</button></div></div></div><div style="display:flex; gap:10px; margin-top:10px;"><button class="btn" onclick="speak('{{card.front}}')">📢 LISTEN</button><button class="btn" style="background:#34495e" onclick="document.getElementById('ansBox').style.display='block'">SHOW</button></div>{% else %}<div class="card" style="text-align:center;padding:40px;"><h3>Done!</h3><a href="/" class="btn">HOME</a></div>{% endif %}</div>
+{% elif mode == 'library' %}
+<div class="container">
+    <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3>Biblioteca</h3><button class="btn" style="width:auto;" onclick="toggleModal('upl')">+ PDF</button></div>
+    {% for r in references %}
+    <div class="card" style="display:flex; justify-content:space-between;">
+        <div><b>{{r.title}}</b></div>
+        <div style="display:flex; gap:5px;">
+            <a href="/read_ref/{{r.id}}" class="btn btn-sm">📖 Ler</a>
+            <a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#d63031;">X</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div id="upl" class="modal"><div class="modal-content"><form action="/library" method="POST" enctype="multipart/form-data"><input type="file" name="pdf_file"><button class="btn">ENVIAR</button></form><button class="btn" style="background:#888; margin-top:10px;" onclick="toggleModal('upl')">FECHAR</button></div></div>
+
+{% elif mode == 'new_text' %}
+<div class="container"><h3>Novo Estudo</h3><form action="/processar" method="POST"><textarea name="texto_full" style="height:200px; width:100%;" placeholder="Cole o texto em inglês aqui..."></textarea><button class="btn" style="width:100%; margin-top:10px;">PROCESSAR TEXTO</button></form></div>
 
 {% elif mode == 'vocab_list' %}
-<div class="container"><h3>Vocabulary</h3>{% for c in cards %}<div class="card" style="padding:10px; margin-bottom:5px; display:flex; justify-content:space-between;"><b>{{c.front}}</b> <small>{{c.back}}</small></div>{% endfor %}</div>
+<div class="container"><h3>Meus Flashcards</h3>{% for c in cards %}<div class="card"><b>{{c.front}}</b> <small>{{c.back}}</small> <button class="btn btn-sm" style="float:right;" onclick="speak('{{c.front}}')">🔊</button></div>{% endfor %}</div>
 
-{% elif mode == 'tutor' %}
-<div class="container"><h3>AI Tutor</h3><form action="/tutor" method="POST"><textarea name="pt_text" style="height:100px;"></textarea><button class="btn">TRANSLATE & EXPLAIN</button></form>{% if res %}<div class="card" style="margin-top:20px;"><p onclick="speak(this.innerText)">{{res.en}}</p></div>{% endif %}</div>
+{% elif mode == 'writer' %}
+<div class="container"><h3>Sci-Writer</h3><textarea style="width:100%; height:400px; padding:15px;"></textarea></div>
 
 {% endif %}
 
-<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select></div></div>
+<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%; width:50px;" onclick="togglePlay()">▶</button></div></div>
 
-<div id="dictMod" class="modal">
-    <div class="modal-content">
-        <h2 id="dictWord">Word</h2>
-        <p id="dictTrans">...</p>
-        <input type="hidden" id="save_f">
-        <div style="display:flex; gap:10px;">
-            <button class="btn" onclick="speak(document.getElementById('dictWord').innerText)">🔊</button>
-            <button class="btn" style="background:#27ae60;" onclick="saveDict()">💾 SAVE</button>
-        </div>
-        <button class="btn" style="background:#888; margin-top:10px; width:100%;" onclick="toggleModal('dictMod')">CLOSE</button>
-    </div>
-</div>
+<div id="dictMod" class="modal"><div class="modal-content">
+    <h2 id="dictWord">love</h2><p id="dictTrans">amor</p>
+    <div style="display:flex; gap:10px;"><button class="btn" onclick="playDict()">🔊</button><button class="btn" style="background:#27ae60;" onclick="saveDict()">💾 SALVAR</button></div>
+    <button class="btn" style="background:#888; margin-top:10px;" onclick="toggleModal('dictMod')">FECHAR</button>
+    <input type="hidden" id="save_f">
+</div></div>
 
 </body></html>
