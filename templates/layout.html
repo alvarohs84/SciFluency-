@@ -1,271 +1,229 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
 <style>
-/* --- CORES & BASE --- */
-:root { --bg: #f8f9fa; --card: #fff; --text: #2d3436; --subtext: #636e72; --accent: #0984e3; --border: #dfe6e9; --input: #f1f2f6; --highlight: #ffeaa7; }
-body.dark-mode { --bg: #2d3436; --card: #353b48; --text: #dfe6e9; --subtext: #b2bec3; --accent: #74b9ff; --border: #636e72; --input: #2d3436; --highlight: #e17055; }
-body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:120px;color:var(--text); transition:0.3s;}
+:root { --primary: #2980b9; --sec: #2c3e50; --bg: #f5f6fa; --card: #fff; --highlight: #ffeaa7; }
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--sec); margin: 0; padding-bottom: 80px; }
+.header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+.container { padding: 20px; max-width: 800px; margin: 0 auto; }
+.card { background: var(--card); padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
+.btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn-del { background: #e74c3c; padding: 5px 10px; font-size: 0.8em; }
 
-/* --- ESTRUTURA --- */
-.header{background:var(--card);padding:15px;border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:0;z-index:1000;}
-.container{padding:20px;max-width:800px;margin:0 auto;}
-.sidebar{height:100%;width:0;position:fixed;top:0;left:0;background:var(--card);overflow-x:hidden;transition:0.3s;padding-top:60px;z-index:2000;box-shadow:2px 0 100px rgba(0,0,0,0.2); border-right:1px solid var(--border);}
-.sidebar-section { padding: 15px 25px 5px 25px; font-size: 0.8rem; font-weight: bold; color: var(--subtext); letter-spacing: 1px; margin-top: 15px; border-bottom: 2px solid var(--border); }
-.sidebar a{padding:12px 25px;text-decoration:none;font-size:1rem;color:var(--text);display:block;border-bottom:1px solid var(--border);}
-.sidebar a:hover { background: var(--input); }
+/* LEITURA & KARAOKE */
+.sentence-block { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; line-height: 1.6; }
+.sentence-active { background: #e1f5fe; border-left: 5px solid var(--primary); }
+.word-span { cursor: pointer; padding: 2px; border-radius: 3px; }
+.word-span:hover { background: #dfe6e9; }
+.word-active { background: var(--highlight); color: black; font-weight: bold; transform: scale(1.1); display: inline-block; }
 
-/* --- COMPONENTES --- */
-.card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 5px rgba(0,0,0,0.05);}
-.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer; display:inline-block; text-decoration:none; width: 100%; text-align: center; box-sizing: border-box;}
-.btn-sm{padding:5px 10px; font-size:0.8rem; width: auto;}
-.fab { position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
+/* NAVBAR FIXA NO RODAPÉ */
+.nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 10px 0; z-index: 200; }
+.nav-item { text-align: center; color: var(--sec); text-decoration: none; font-size: 0.8em; }
+.nav-item span { display: block; font-size: 1.5em; }
 
-/* --- LEITURA CLÁSSICA (Karaoke) --- */
-.sentence-block { padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; line-height: 1.6; }
-.sentence-active { background-color: #e1f5fe; border-left: 5px solid var(--accent); }
-.word-span { cursor: pointer; border-bottom: 1px dotted transparent; }
-.word-span:hover { background: #fdcb6e; color: black; border-radius: 3px; }
-.word-active { background-color: var(--highlight) !important; color: black; box-shadow: 0 0 5px var(--highlight); border-radius: 3px; font-weight: bold; }
+/* MODAL */
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+.modal-content { background: white; padding: 25px; border-radius: 10px; width: 80%; max-width: 400px; text-align: center; }
+input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
 
-/* --- PRONÚNCIA --- */
-.mic-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); color: white; border: none; font-size: 2rem; cursor: pointer; display: block; margin: 20px auto; }
-.mic-active { background: #e74c3c; animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
-
-/* --- OUTROS --- */
-.modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
-.modal-content { background-color: var(--card); padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; }
-.player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
+/* PRONÚNCIA */
+.mic-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); color: white; font-size: 2em; border: none; margin: 20px; cursor: pointer; }
+.mic-active { background: #e74c3c; animation: pulse 1s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231,76,60,0.7); } 100% { box-shadow: 0 0 0 15px rgba(231,76,60,0); } }
 </style>
 <script>
-// --- FUNÇÕES GERAIS ---
-function openNav(){document.getElementById("side").style.width="280px";}
-function closeNav(){document.getElementById("side").style.width="0";}
-function toggleTheme() { document.body.classList.toggle('dark-mode'); }
-function toggleModal(id) { const m=document.getElementById(id); m.style.display=(m.style.display==='flex')?'none':'flex'; }
+let curAud = null, currentSpans = [], rate=1.0;
 
-// --- MOTOR DE ÁUDIO & KARAOKÊ ---
-let curAud = null, currentSpans = [], karaokeTimeout = null, rate = 1.0;
-async function speak(text){ 
-    if(curAud) { curAud.pause(); curAud = null; } 
-    if(karaokeTimeout) clearTimeout(karaokeTimeout);
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
+async function speak(text) {
+    if(curAud) curAud.pause();
+    document.querySelectorAll('.word-active').forEach(w => w.classList.remove('word-active'));
     
-    const btn = document.getElementById('playBtn'); if(btn) btn.innerText='⏳'; 
-    const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
+    // Remove tags HTML para o TTS
+    const clean = text.replace(/<[^>]*>/g, "");
     
-    try { 
-        const response = await fetch('/tts', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=com' }); 
-        const blob = await response.blob(); 
-        const url = URL.createObjectURL(blob); 
-        curAud = new Audio(url); curAud.playbackRate = rate; 
-        
-        curAud.onloadedmetadata = () => { 
-            if(btn) btn.innerText='⏸'; 
-            curAud.play(); 
-            if(currentSpans.length > 0) startWeightedKaraoke(curAud.duration); 
-        }; 
-        curAud.onended = () => { if(btn) btn.innerText='▶'; document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); }; 
-    } catch (e) { console.error(e); } 
-}
-
-function startWeightedKaraoke(duration) {
-    if (currentSpans.length === 0) return;
-    let weights = currentSpans.map(s => s.innerText.length);
-    let totalTimeMs = (duration * 1000) / rate;
-    let timePerWeight = totalTimeMs / weights.reduce((a, b) => a + b, 0);
-    let index = 0;
-    function next() {
-        if (index >= currentSpans.length) { clearTimeout(karaokeTimeout); return; }
-        if (index > 0) currentSpans[index-1].classList.remove('word-active');
-        currentSpans[index].classList.add('word-active');
-        let delay = weights[index] * timePerWeight;
-        index++; karaokeTimeout = setTimeout(next, delay);
+    const res = await fetch('/tts', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'text='+encodeURIComponent(clean)+'&accent=com'});
+    const blob = await res.blob();
+    curAud = new Audio(URL.createObjectURL(blob));
+    curAud.playbackRate = rate;
+    
+    // KARAOKE VISUAL
+    if(currentSpans.length > 0) {
+        let duration = 0;
+        curAud.onloadedmetadata = () => {
+            duration = curAud.duration;
+            animateKaraoke(duration);
+        };
     }
-    next();
+    curAud.play();
 }
 
-function prepare(el){ 
-    if(curAud){curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout);}
-    document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
-    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active'));
+function animateKaraoke(duration) {
+    let totalChars = currentSpans.map(s => s.innerText.length).reduce((a,b)=>a+b, 0);
+    let timePerChar = (duration * 1000) / totalChars;
+    let accumulatedTime = 0;
     
+    currentSpans.forEach((span, i) => {
+        let delay = accumulatedTime;
+        let wordTime = span.innerText.length * timePerChar;
+        setTimeout(() => {
+            if(i>0) currentSpans[i-1].classList.remove('word-active');
+            span.classList.add('word-active');
+        }, delay);
+        accumulatedTime += wordTime;
+    });
+    
+    setTimeout(() => {
+        if(currentSpans.length>0) currentSpans[currentSpans.length-1].classList.remove('word-active');
+    }, duration * 1000);
+}
+
+function prepare(el) {
+    document.querySelectorAll('.sentence-active').forEach(s => s.classList.remove('sentence-active'));
     el.classList.add('sentence-active');
     currentSpans = Array.from(el.querySelectorAll('.word-span'));
-    
     speak(el.innerText);
 }
 
-// --- DICIONÁRIO ---
-function mineWord(e, w) { 
-    e.stopPropagation(); 
-    if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
-    document.getElementById("dictMod").style.display = "flex";
-    document.getElementById("dictWord").innerText = w;
-    document.getElementById("dictTrans").innerText = "...";
-    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{ document.getElementById("dictTrans").innerText = d.t; document.getElementById("save_f").value=w; });
-}
-function saveDict() {
-    const w = document.getElementById("save_f").value;
-    const fd = new FormData(); fd.append('term', w);
-    fetch('/adicionar_vocab', {method:'POST', body:fd}).then(r=>r.json()).then(d=>{
-        document.getElementById("dictMod").style.display='none'; alert("Salvo!");
+function mineWord(e, w) {
+    e.stopPropagation();
+    if(curAud) curAud.pause();
+    document.getElementById('dictModal').style.display = 'flex';
+    document.getElementById('dictWord').innerText = w;
+    document.getElementById('dictTrans').innerText = '...';
+    fetch('/translate?w='+w).then(r=>r.json()).then(d => {
+        document.getElementById('dictTrans').innerText = d.t;
+        document.getElementById('saveFront').value = w;
+        document.getElementById('saveBack').value = d.t;
     });
 }
-function playDict() { speak(document.getElementById("dictWord").innerText); }
 
-// --- PRONÚNCIA (SpeechRecognition) ---
-function startRec(word) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert("Use Chrome!"); return; }
-    
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    const btn = document.getElementById('micBtn');
-    const fb = document.getElementById('feedback');
-    
-    recognition.onstart = () => { btn.classList.add('mic-active'); fb.innerText = "Listening..."; };
-    recognition.onend = () => { btn.classList.remove('mic-active'); };
-    
-    recognition.onresult = (event) => {
-        const spoken = event.results[0][0].transcript.toLowerCase().replace(/[^a-z]/g, '');
-        const target = word.toLowerCase().replace(/[^a-z]/g, '');
-        if (spoken === target) {
-            fb.innerHTML = "<b style='color:#27ae60'>✅ Perfect!</b>";
-            new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg').play();
-        } else {
-            fb.innerHTML = "<b style='color:#e74c3c'>❌ Heard: " + spoken + "</b>";
-        }
+function saveCard() {
+    const f = document.getElementById('saveFront').value;
+    const b = document.getElementById('saveBack').value;
+    fetch('/add_card', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`front=${f}&back=${b}`})
+    .then(() => { document.getElementById('dictModal').style.display='none'; alert('Salvo!'); });
+}
+
+// PRONÚNCIA
+function startRec(target) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return alert("Use Chrome");
+    const rec = new SR(); rec.lang='en-US';
+    const btn = document.getElementById('mic');
+    rec.onstart = () => { btn.classList.add('mic-active'); };
+    rec.onend = () => { btn.classList.remove('mic-active'); };
+    rec.onresult = (e) => {
+        const spoken = e.results[0][0].transcript.toLowerCase().replace(/[^a-z]/g, '');
+        const cleanT = target.toLowerCase().replace(/[^a-z]/g, '');
+        document.getElementById('fb').innerHTML = (spoken == cleanT) ? "✅ PERFEITO!" : `❌ Ouvi: ${spoken}`;
     };
-    recognition.start();
+    rec.start();
 }
 </script>
 </head>
 <body>
 
-<div id="side" class="sidebar">
-    <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2rem;padding-right:20px;">&times;</a>
-    <a href="/" style="background:var(--input);">🏠 Dashboard</a>
-
-    <div class="sidebar-section">📖 ESTUDO & FONÉTICA</div>
-    <a href="/novo_texto">✨ Novo Texto (Karaokê)</a>
-    <a href="/pronunciation">🎤 Treino de Pronúncia</a>
-    <a href="/vocab_list">🗂️ Meus Flashcards</a>
-
-    <div class="sidebar-section">🎓 PESQUISA & PDF</div>
-    <a href="/library">📚 Minha Biblioteca</a>
-    <a href="/writer">📝 Assistente de Escrita</a>
-</div>
-
 <div class="header">
-    <span onclick="openNav()" style="font-size:1.5rem;cursor:pointer;">☰</span>
-    <h3 style="margin-left:20px; flex:1;">{{ app_name }}</h3>
-    <span onclick="toggleTheme()" style="font-size:1.5rem;cursor:pointer;">🌙</span>
+    <h3>{{ app_name }}</h3>
+    <a href="/novo" class="btn">+ Novo</a>
 </div>
 
-{% if mode == 'dashboard' %}
+{% if mode == 'home' %}
 <div class="container">
-    <h3>Bem-vindo ao SciFluency</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div class="card" onclick="window.location.href='/novo_texto'" style="cursor:pointer; border-left:5px solid #0984e3;">
-            <b>📖 Colar Texto</b><br><small>Estude com Karaokê</small>
-        </div>
-        <div class="card" onclick="window.location.href='/library'" style="cursor:pointer; border-left:5px solid #e17055;">
-            <b>📚 Biblioteca</b><br><small>Gerenciar PDFs</small>
-        </div>
-        <div class="card" onclick="window.location.href='/pronunciation'" style="cursor:pointer; border-left:5px solid #00b894;">
-            <b>🎤 Pronúncia</b><br><small>Treinar Fala</small>
-        </div>
-        <div class="card" onclick="window.location.href='/writer'" style="cursor:pointer; border-left:5px solid #6c5ce7;">
-            <b>📝 Escrever</b><br><small>Tese e Artigos</small>
-        </div>
+    <div class="card" style="text-align:center; background:#e1f5fe;">
+        <h2>{{ vocab_count }}</h2>
+        <small>Palavras Aprendidas</small>
+        <br><br>
+        <a href="/vocab" class="btn">Revisar Agora</a>
     </div>
-    <div class="card">
-        <b>Progresso ({{ stats.vocab }} palavras)</b>
-        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:10px;">
-            {% for d in stats.heatmap %}<div style="height:20px; background:{{d.color}}; border-radius:3px;"></div>{% endfor %}
+    <h3>Meus Textos</h3>
+    {% for s in stories %}
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div onclick="window.location.href='/ler/{{s.id}}'" style="cursor:pointer; flex:1;">
+            <b>{{ s.title }}</b><br>
+            <small>{{ s.sentences|length }} frases</small>
         </div>
+        <a href="/delete_story/{{s.id}}" class="btn-del">X</a>
     </div>
+    {% endfor %}
 </div>
 
-{% elif mode == 'read_classic' %}
+{% elif mode == 'read' %}
 <div class="container">
     <h3>{{ story.title }}</h3>
     {% for s in story.sentences %}
     <div class="sentence-block" onclick="prepare(this)">
-        {% for w in s.en.split() %}<span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span> {% endfor %}
-        <br><small style="color:var(--subtext);">{{ s.pt }}</small>
+        {% for w in s.en.split() %}
+        <span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span>
+        {% endfor %}
+        <br><small style="color:#7f8c8d">{{ s.pt }}</small>
     </div>
     {% endfor %}
 </div>
 
-{% elif mode == 'read_pdf' %}
+{% elif mode == 'vocab' %}
 <div class="container">
-    <button class="btn" onclick="window.history.back()" style="background:#34495e; margin-bottom:10px;">⬅ Voltar</button>
-    <h3>{{ title }}</h3>
-    <div style="background:var(--card); padding:20px; border-radius:8px; line-height:1.8;">
-        {{ content | safe }}
+    {% for c in cards %}
+    <div class="card" style="display:flex; justify-content:space-between;">
+        <div onclick="speak('{{c.front}}')">
+            <b>{{c.front}}</b> <span style="color:#2980b9">{{c.ipa}}</span><br>
+            <small>{{c.back}}</small>
+        </div>
+        <a href="/delete_card/{{c.id}}" style="color:red;">X</a>
     </div>
+    {% endfor %}
 </div>
 
 {% elif mode == 'pronunciation' %}
-<div class="container">
-    <script>const words = {{ words_json | safe }}; let curIdx=0;</script>
-    <div class="card" style="text-align:center; padding:40px;">
-        <h1 id="targetW">Ready</h1>
-        <p id="targetIPA" style="color:var(--accent);">...</p>
-        <button id="micBtn" class="mic-btn" onclick="startRec(document.getElementById('targetW').innerText)">🎤</button>
-        <p id="feedback">Toque no microfone e fale</p>
-        <button class="btn" onclick="nextW()" style="margin-top:20px;">Próxima ➡</button>
+<div class="container" style="text-align:center;">
+    <script>const words = {{ words_json | safe }}; let idx=0;</script>
+    <div class="card" style="padding:40px;">
+        <h1 id="pWord">Ready?</h1>
+        <p id="pIpa" style="color:#2980b9">...</p>
+        <button id="mic" class="mic-btn" onclick="startRec(document.getElementById('pWord').innerText)">🎤</button>
+        <h3 id="fb">Toque e Fale</h3>
+        <br>
+        <button class="btn" onclick="let w=words[Math.floor(Math.random()*words.length)]; document.getElementById('pWord').innerText=w.w; document.getElementById('pIpa').innerText=w.ipa; document.getElementById('fb').innerText='...';">Próxima ➡</button>
     </div>
-    <script>
-    function nextW(){
-        const w = words[Math.floor(Math.random()*words.length)];
-        document.getElementById('targetW').innerText = w.w;
-        document.getElementById('targetIPA').innerText = w.ipa;
-        document.getElementById('feedback').innerText = "Toque e fale...";
-    }
-    nextW();
-    </script>
 </div>
 
-{% elif mode == 'library' %}
+{% elif mode == 'new' %}
 <div class="container">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px;"><h3>Biblioteca</h3><button class="btn" style="width:auto;" onclick="toggleModal('upl')">+ PDF</button></div>
-    {% for r in references %}
-    <div class="card" style="display:flex; justify-content:space-between;">
-        <div><b>{{r.title}}</b></div>
-        <div style="display:flex; gap:5px;">
-            <a href="/read_ref/{{r.id}}" class="btn btn-sm">📖 Ler</a>
-            <a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#d63031;">X</a>
-        </div>
+    <div class="card">
+        <h3>Adicionar Material</h3>
+        <form action="/novo" method="POST" enctype="multipart/form-data">
+            <label>Opção A: Colar Texto</label>
+            <textarea name="text_input" rows="5" placeholder="English text here..."></textarea>
+            <hr>
+            <label>Opção B: Enviar PDF</label>
+            <input type="file" name="file_input" accept=".pdf">
+            <br><br>
+            <button class="btn" style="width:100%">PROCESSAR E ESTUDAR</button>
+        </form>
     </div>
-    {% endfor %}
 </div>
-<div id="upl" class="modal"><div class="modal-content"><form action="/library" method="POST" enctype="multipart/form-data"><input type="file" name="pdf_file"><button class="btn">ENVIAR</button></form><button class="btn" style="background:#888; margin-top:10px;" onclick="toggleModal('upl')">FECHAR</button></div></div>
-
-{% elif mode == 'new_text' %}
-<div class="container"><h3>Novo Estudo</h3><form action="/processar" method="POST"><textarea name="texto_full" style="height:200px; width:100%;" placeholder="Cole o texto em inglês aqui..."></textarea><button class="btn" style="width:100%; margin-top:10px;">PROCESSAR TEXTO</button></form></div>
-
-{% elif mode == 'vocab_list' %}
-<div class="container"><h3>Meus Flashcards</h3>{% for c in cards %}<div class="card"><b>{{c.front}}</b> <small>{{c.back}}</small> <button class="btn btn-sm" style="float:right;" onclick="speak('{{c.front}}')">🔊</button></div>{% endfor %}</div>
-
-{% elif mode == 'writer' %}
-<div class="container"><h3>Sci-Writer</h3><textarea style="width:100%; height:400px; padding:15px;"></textarea></div>
-
 {% endif %}
 
-<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%; width:50px;" onclick="togglePlay()">▶</button></div></div>
+<div id="dictModal" class="modal">
+    <div class="modal-content">
+        <h2 id="dictWord">...</h2>
+        <p id="dictTrans">...</p>
+        <input type="hidden" id="saveFront">
+        <input type="hidden" id="saveBack">
+        <button class="btn" onclick="saveCard()">Salvar Flashcard</button>
+        <br><br>
+        <button class="btn" style="background:#7f8c8d" onclick="document.getElementById('dictModal').style.display='none'">Fechar</button>
+    </div>
+</div>
 
-<div id="dictMod" class="modal"><div class="modal-content">
-    <h2 id="dictWord">love</h2><p id="dictTrans">amor</p>
-    <div style="display:flex; gap:10px;"><button class="btn" onclick="playDict()">🔊</button><button class="btn" style="background:#27ae60;" onclick="saveDict()">💾 SALVAR</button></div>
-    <button class="btn" style="background:#888; margin-top:10px;" onclick="toggleModal('dictMod')">FECHAR</button>
-    <input type="hidden" id="save_f">
-</div></div>
+<div class="nav-bar">
+    <a href="/" class="nav-item"><span>🏠</span>Home</a>
+    <a href="/novo" class="nav-item"><span>➕</span>Novo</a>
+    <a href="/pronunciation" class="nav-item"><span>🎤</span>Falar</a>
+    <a href="/vocab" class="nav-item"><span>🗂️</span>Vocab</a>
+</div>
 
 </body></html>
