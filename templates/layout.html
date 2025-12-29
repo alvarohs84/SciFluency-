@@ -5,62 +5,141 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
 <style>
-/* --- CORES DO RESEARCH OS --- */
+/* --- ESTILO HÍBRIDO (ESTUDO + PESQUISA) --- */
 :root { 
-    --bg: #f4f6f8; --card: #ffffff; --text: #2c3e50; --subtext: #7f8c8d; 
-    --accent: #2980b9; --border: #dfe6e9; --input: #fdfdfd;
-    --status-todo: #95a5a6; --status-doing: #f39c12; --status-done: #27ae60;
+    --bg: #f4f7f6; --card: #ffffff; --text: #2d3436; --subtext: #636e72; 
+    --accent: #0984e3; --border: #dfe6e9; --input: #f1f2f6; 
+    --learn: #00b894; --research: #6c5ce7; 
 }
 body.dark-mode { 
     --bg: #1e1e1e; --card: #2d2d2d; --text: #ecf0f1; --subtext: #bdc3c7; 
-    --accent: #3498db; --border: #444; --input: #3d3d3d;
+    --accent: #74b9ff; --border: #444; --input: #3d3d3d; 
 }
-body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:100px;color:var(--text); transition:0.3s;}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);margin:0;padding-bottom:140px;color:var(--text); transition:0.3s;}
 
-/* --- LAYOUT GERAL --- */
-.header{background:var(--card);padding:15px;border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:0;z-index:1000; box-shadow: 0 2px 5px rgba(0,0,0,0.05);}
-.container{padding:20px;max-width:800px;margin:0 auto;}
+/* --- ESTRUTURA --- */
+.header{background:var(--card);padding:15px;border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:0;z-index:1000;}
+.container{padding:20px;max-width:900px;margin:0 auto;}
 .sidebar{height:100%;width:0;position:fixed;top:0;left:0;background:var(--card);overflow-x:hidden;transition:0.3s;padding-top:60px;z-index:2000;box-shadow:2px 0 100px rgba(0,0,0,0.2); border-right:1px solid var(--border);}
-.sidebar a{padding:15px 25px;text-decoration:none;font-size:1.1rem;color:var(--text);display:block;border-bottom:1px solid var(--border);}
-.sidebar a span{display:block;font-size:0.8rem;color:var(--subtext);margin-top:2px;}
+.sidebar-section { padding: 15px 25px 5px 25px; font-size: 0.8rem; font-weight: bold; color: var(--subtext); letter-spacing: 1px; margin-top: 10px; border-bottom: 2px solid var(--border); }
+.sidebar a{padding:12px 25px;text-decoration:none;font-size:1rem;color:var(--text);display:block;border-bottom:1px solid var(--border);}
+.sidebar a:hover { background: var(--input); }
 
 /* --- COMPONENTES --- */
-.card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.03);}
-.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer; display:inline-block; text-align:center; text-decoration:none;}
-.btn-sm{padding:5px 10px; font-size:0.8rem;}
-.fab { position: fixed; bottom: 30px; right: 20px; width: 60px; height: 60px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
-
-/* --- LIBRARY SPECIFIC --- */
-.ref-card { display: flex; flex-direction: column; gap: 10px; border-left: 5px solid var(--status-todo); }
-.ref-card.reading { border-left-color: var(--status-doing); }
-.ref-card.done { border-left-color: var(--status-done); }
-.ref-meta { display: flex; justify-content: space-between; align-items: center; color: var(--subtext); font-size: 0.9rem; }
-.ref-actions { display: flex; gap: 5px; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;}
-.status-badge { padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; color: white; background: var(--status-todo); }
+.card{background:var(--card);padding:20px;margin-bottom:15px;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 5px rgba(0,0,0,0.05);}
+.btn{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:6px;font-weight:600;cursor:pointer; display:inline-block; text-decoration:none; width: 100%; box-sizing: border-box; text-align: center;}
+.btn-sm{padding:5px 10px; font-size:0.8rem; width: auto;}
+input, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input); color: var(--text); box-sizing: border-box;}
 
 /* --- DASHBOARD --- */
-.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-.stat-box { background: var(--card); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid var(--border); }
-.stat-num { font-size: 2rem; font-weight: bold; color: var(--accent); }
-.stat-label { font-size: 0.9rem; color: var(--subtext); }
+.section-title { font-size: 1.2rem; font-weight: bold; color: var(--subtext); margin: 20px 0 10px 0; }
+.dash-stats { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 15px; }
+.stat-item { background: var(--card); border: 1px solid var(--border); padding: 10px; border-radius: 8px; min-width: 100px; text-align: center; }
+.heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.heat-day { aspect-ratio: 1; border-radius: 2px; }
 
-/* --- INPUTS --- */
-input, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input); color: var(--text); box-sizing: border-box;}
+/* --- LIBRARY & WRITER --- */
+.ref-card { padding: 15px; border-radius: 8px; margin-bottom: 10px; background: var(--card); border: 1px solid var(--border); border-left: 5px solid #f39c12; }
+.ref-card.done { border-left-color: #00b894; }
+.draft-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); border-left: 5px solid var(--research); cursor: pointer; }
+.paper-area { width: 100%; height: 60vh; padding: 20px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Georgia', serif; font-size: 1.1rem; line-height: 1.8; background: var(--input); color: var(--text); resize: none; box-sizing: border-box;}
+
+/* --- LEITOR & KARAOKE --- */
+.sentence-block{padding:10px; margin-bottom:10px; cursor:pointer; line-height: 1.6;}
+.sentence-active { background-color: #e1f5fe; border-left: 4px solid var(--accent); color: #000; }
+body.dark-mode .sentence-active { background-color: #2c3e50; color: #fff; }
+.player{position:fixed;bottom:0;left:0;width:100%;background:var(--card);border-top:1px solid var(--border);padding:20px;z-index:1500;display:flex;flex-direction:column;gap:10px;align-items:center;}
+.controls-row{display:flex;gap:15px;align-items:center;}
+.fab { position: fixed; bottom: 100px; right: 20px; width: 56px; height: 56px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; z-index: 1400; }
+
+/* --- MODAIS --- */
 .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
 .modal-content { background-color: var(--card); padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; }
-
-/* --- SCI-WRITER --- */
-.writer-toolbar { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
-.writer-tag { white-space: nowrap; background: var(--bg); border: 1px solid var(--border); padding: 5px 15px; border-radius: 20px; cursor: pointer; }
-.text-area-box { width: 100%; padding: 15px; border-radius: 12px; font-family: inherit; line-height: 1.6; min-height: 300px; border: 1px solid var(--border); background: var(--input); color: var(--text);}
+.writer-tag { background: var(--bg); border: 1px solid var(--border); padding: 5px 12px; border-radius: 20px; cursor: pointer; display: inline-block; margin-right: 5px; margin-bottom: 5px; }
+.connector-item { padding: 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
 </style>
 <script>
+// --- MOTOR DE ÁUDIO NEURAL ---
+let curAud = null, rate = 1.0, acc = 'com'; 
+
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); }
-function toggleModal(id) { 
-    const m = document.getElementById(id); 
-    m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; 
+function toggleModal(id) { const m=document.getElementById(id); m.style.display=(m.style.display==='flex')?'none':'flex'; }
+
+async function speak(text){ 
+    if(curAud) { curAud.pause(); curAud = null; } 
+    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active'));
+    const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
+    const cleanTxt = text.replace(/<[^>]*>/g, "").replace(/\[|\]/g, "");
+    try { 
+        const response = await fetch('/tts', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'text=' + encodeURIComponent(cleanTxt) + '&accent=' + acc }); 
+        const blob = await response.blob(); 
+        const url = URL.createObjectURL(blob); 
+        curAud = new Audio(url); curAud.playbackRate = rate; 
+        curAud.onloadedmetadata = () => { btn.innerText='⏸'; curAud.play(); }; 
+        curAud.onended = () => { btn.innerText='▶'; document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); }; 
+    } catch (e) { console.error(e); btn.innerText='⚠️'; } 
+}
+
+function togglePlay(){ 
+    if(curAud){ if(curAud.paused){curAud.play(); document.getElementById('playBtn').innerText='⏸';} else{curAud.pause(); document.getElementById('playBtn').innerText='▶';} } 
+}
+
+// --- FUNÇÃO DE LEITURA (PDF/ARTIGOS) ---
+function prepare(el){ 
+    if(curAud){curAud.pause();} 
+    document.querySelectorAll('.sentence-active').forEach(w=>w.classList.remove('sentence-active')); 
+    el.classList.add('sentence-active');
+    
+    // Seleção de palavra para dicionário (clique duplo ou seleção)
+    let textToRead = el.innerText;
+    speak(textToRead); 
+}
+
+// Ao selecionar texto, abrir dicionário
+document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if(sel.toString().length > 0 && sel.toString().length < 30) {
+        // Implementação futura: botão flutuante.
+        // Por enquanto, usamos clique no manual dictionary
+    }
+});
+
+function openDict(w) {
+    const m = document.getElementById("dictMod"); m.style.display = "flex";
+    document.getElementById("dictWord").innerText = w;
+    document.getElementById("dictTrans").innerText = "...";
+    fetch('/traduzir_palavra?w='+w).then(r=>r.json()).then(d=>{ 
+        document.getElementById("dictTrans").innerText = d.t; 
+        document.getElementById("save_f").value = w;
+    });
+}
+function saveDict() {
+    const w = document.getElementById("save_f").value;
+    const fd = new FormData(); fd.append('term', w);
+    fetch('/adicionar_vocab', {method:'POST', body:fd}).then(r=>r.json()).then(d=>{
+        document.getElementById("dictMod").style.display='none'; alert("Saved!");
+    });
+}
+
+// --- SCI-WRITER ---
+function insertText(text) {
+    const area = document.getElementById('paper');
+    if (area.selectionStart || area.selectionStart == '0') {
+        var start = area.selectionStart; var end = area.selectionEnd;
+        area.value = area.value.substring(0, start) + text + " " + area.value.substring(end, area.value.length);
+        area.selectionStart = area.selectionEnd = start + text.length + 1;
+    } else { area.value += text + " "; }
+    area.focus(); document.getElementById('connectors').style.display='none';
+}
+function onType(id) {
+    clearTimeout(window.saveTimer);
+    window.saveTimer = setTimeout(() => {
+        const fd = new FormData(); fd.append('content', document.getElementById('paper').value);
+        fetch('/writer/'+id, {method:'POST', body:fd});
+        document.getElementById('saveStatus').innerText = "Saved";
+    }, 2000);
 }
 </script>
 </head>
@@ -68,117 +147,126 @@ function toggleModal(id) {
 
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2rem;padding-right:20px;">&times;</a>
-    <a href="/">📊 Dashboard <span>Visão Geral</span></a>
-    <a href="/library">📚 My Library <span>Gerenciar Referências</span></a>
-    <a href="/writer">📝 Sci-Writer <span>Escrever Artigo</span></a>
-    <a href="/vocab_list">🗂️ Vocab Deck <span>Flashcards</span></a>
-    <a href="/search">🔍 PubMed <span>Buscar Novos</span></a>
+    <a href="javascript:void(0)" onclick="toggleTheme()">🌙 Theme</a>
+    <a href="/" style="background:var(--input);">🏠 Dashboard</a>
+
+    <div class="sidebar-section">🎓 RESEARCH</div>
+    <a href="/library">📚 My Library <span>Manage PDFs</span></a>
+    <a href="/search">🔍 Search Articles <span>PubMed</span></a>
+    <a href="/writer">📝 Thesis Writer <span>Draft Chapters</span></a>
+
+    <div class="sidebar-section">🇺🇸 ENGLISH</div>
+    <a href="/vocab_list">🗂️ Flashcards <span>Review Words</span></a>
+    <a href="/tutor">👩‍🏫 AI Tutor <span>Translator</span></a>
+    <a href="/pronunciation">🎤 Pronunciation <span>Lab</span></a>
+    <a href="/novo">✨ Manual Input <span>Copy/Paste</span></a>
 </div>
 
 <div class="header">
     <span onclick="openNav()" style="font-size:1.5rem;cursor:pointer;">☰</span>
     <h3 style="margin-left:20px; flex:1;">{{ app_name }}</h3>
-    <span onclick="toggleTheme()" style="font-size:1.5rem;cursor:pointer;">🌙</span>
+    <span onclick="toggleModal('dictMod')" style="font-size:1.2rem;cursor:pointer;">🔍</span>
 </div>
 
 {% if mode == 'dashboard' %}
 <div class="container">
-    <h2>{{ project.title }}</h2>
-    <p style="color:var(--subtext);">Alvo: {{ project.target_journal }}</p>
-    
-    <div class="dash-grid">
-        <div class="stat-box"><div class="stat-num">{{ stats.refs }}</div><div class="stat-label">Total References</div></div>
-        <div class="stat-box"><div class="stat-num" style="color:#f39c12;">{{ stats.reading }}</div><div class="stat-label">Reading Now</div></div>
-        <div class="stat-box"><div class="stat-num" style="color:#27ae60;">{{ stats.done }}</div><div class="stat-label">Completed</div></div>
-        <div class="stat-box"><div class="stat-num">{{ stats.vocab }}</div><div class="stat-label">Vocab Cards</div></div>
+    <div class="section-title" style="color:var(--research);">🎓 Thesis Progress</div>
+    <div class="card" style="border-left: 5px solid var(--research);">
+        <h3 style="margin:0;">{{ project.title }}</h3>
+        <small>{{ project.target_journal }}</small>
+        <div class="dash-stats" style="margin-top:10px;">
+            <div class="stat-item"><b style="color:var(--accent);">{{ stats.refs }}</b><br><small>Refs</small></div>
+            <div class="stat-item"><b style="color:#f39c12;">{{ stats.to_read }}</b><br><small>To Read</small></div>
+        </div>
     </div>
 
-    <h3>Ações Rápidas</h3>
-    <div style="display:grid; gap:10px;">
-        <a href="/library" class="btn" style="background:#34495e;">📂 Abrir Biblioteca</a>
-        <a href="/writer" class="btn">✍️ Continuar Escrevendo</a>
+    <h4>Chapters</h4>
+    {% for draft in drafts %}
+    <div class="draft-card" onclick="window.location.href='/writer/{{draft.id}}'">
+        <div><strong>{{ draft.section_name }}</strong><br><small>Edit</small></div><span>✎</span>
+    </div>
+    {% endfor %}
+
+    <div class="section-title" style="color:var(--learn);">🇺🇸 Study Stats</div>
+    <div class="card" style="border-left: 5px solid var(--learn);">
+        <div style="display:flex; justify-content:space-between;">
+            <div><b>{{ stats.vocab }}</b> Saved Words</div>
+            <div class="heatmap">{% for day in stats.heatmap %}<div class="heat-day" style="background:{{day.color}}"></div>{% endfor %}</div>
+        </div>
+        <a href="/jogar/my_vocab" class="btn" style="background:var(--learn); margin-top:10px;">REVIEW CARDS</a>
     </div>
 </div>
 
 {% elif mode == 'library' %}
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3>Minha Biblioteca</h3>
-        <button class="btn" onclick="toggleModal('addRefModal')">+ PDF</button>
+        <h3>My Articles</h3>
+        <button class="btn" onclick="toggleModal('addRefModal')" style="width:auto;">+ PDF</button>
     </div>
-
     {% for ref in references %}
-    <div class="card ref-card {{ ref.status }}">
-        <div class="ref-meta">
-            <span style="font-weight:bold; color:var(--accent);">{{ ref.year }}</span>
-            <span class="status-badge" style="background:var(--status-{{ ref.status|replace('_','') }});">
-                {{ ref.status|upper }}
-            </span>
-        </div>
+    <div class="ref-card {{ ref.status }}">
+        <div style="display:flex; justify-content:space-between; color:var(--subtext);"><span>{{ ref.year }}</span><span>{{ ref.status|upper }}</span></div>
         <h4 style="margin:5px 0;">{{ ref.title }}</h4>
-        <small style="color:var(--subtext);">{{ ref.authors }}</small>
-        
-        <div class="ref-actions">
-            <a href="/update_status/{{ref.id}}/reading" class="btn btn-sm" style="background:var(--bg); color:var(--text);">📖 Ler</a>
-            <a href="/update_status/{{ref.id}}/done" class="btn btn-sm" style="background:var(--bg); color:var(--text);">✅ Feito</a>
-            <a href="/delete_ref/{{ref.id}}" class="btn btn-sm" style="background:#e74c3c; color:white;">🗑️</a>
+        <small>{{ ref.authors }}</small>
+        <div style="margin-top:10px; display:flex; gap:5px; border-top:1px solid var(--border); padding-top:10px;">
+            <a href="/read_ref/{{ref.id}}" class="btn btn-sm" style="background:var(--accent);">📖 READ</a>
+            <a href="/update_status/{{ref.id}}/done" class="btn btn-sm" style="background:#00b894;">Done</a>
+            <a href="/delete_ref/{{ref.id}}" class="btn btn-sm" style="background:#d63031;">Del</a>
         </div>
     </div>
-    {% else %}
-    <div style="text-align:center; color:var(--subtext); padding:40px;">
-        <p>Nenhum artigo ainda.</p>
-        <p>Clique em <b>+ PDF</b> para começar.</p>
-    </div>
-    {% endfor %}
+    {% else %}<p style="text-align:center;">No articles found.</p>{% endfor %}
 </div>
+<div id="addRefModal" class="modal"><div class="modal-content"><h3>Upload PDF</h3><form action="/library" method="POST" enctype="multipart/form-data"><input type="file" name="pdf_file" required><input type="text" name="title" placeholder="Title"><button class="btn">UPLOAD</button></form><button class="btn" onclick="toggleModal('addRefModal')" style="background:#888; margin-top:10px;">CANCEL</button></div></div>
 
-<div id="addRefModal" class="modal">
-    <div class="modal-content">
-        <h3>Adicionar Referência</h3>
-        <form action="/library" method="POST" enctype="multipart/form-data">
-            <label>Arquivo PDF (Obrigatório)</label>
-            <input type="file" name="pdf_file" required accept=".pdf">
-            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px;">
-                <input type="text" name="authors" placeholder="Autores (ex: Silva et al.)">
-                <input type="text" name="year" placeholder="Ano">
-            </div>
-            <input type="text" name="title" placeholder="Título (opcional, tenta automático)">
-            <button class="btn" style="width:100%;">SALVAR NA BIBLIOTECA</button>
-        </form>
-        <button class="btn" style="background:#888; width:100%; margin-top:10px;" onclick="toggleModal('addRefModal')">CANCELAR</button>
+{% elif mode == 'reader_tool' %}
+<div class="container">
+    <button class="btn" onclick="window.history.back()" style="background:#34495e; margin-bottom:10px;">⬅ Back to Library</button>
+    <h3 style="margin-top:0;">{{ title }}</h3>
+    <div style="font-size:1.1rem; line-height:1.6; background:var(--card); padding:20px; border-radius:8px;">
+        {{ content | safe }}
     </div>
 </div>
 
 {% elif mode == 'writer' %}
 <div class="container">
-    <h3>Sci-Writer</h3>
-    <div class="writer-toolbar">
-        {% for cat, items in connectors.items() %}
-        <span class="writer-tag">{{ cat }}</span>
-        {% endfor %}
+    <div style="display:flex; justify-content:space-between;"><h3>{{ draft.section_name }}</h3><small id="saveStatus">Saved</small></div>
+    <div style="overflow-x:auto; white-space:nowrap; margin-bottom:10px;">
+        <span class="writer-tag" onclick="document.getElementById('connectors').style.display='block'">+ Connectors</span>
     </div>
-    <textarea class="text-area-box" placeholder="Escreva seu artigo aqui..."></textarea>
+    <div id="connectors" class="connector-list">
+        {% for cat, items in connectors.items() %}
+            <div style="background:#eee; padding:5px;"><b>{{cat}}</b></div>
+            {% for item in items %}<div class="connector-item" onclick="insertText('{{item.en}}')">{{item.en}}</div>{% endfor %}
+        {% endfor %}
+        <button class="btn" onclick="document.getElementById('connectors').style.display='none'" style="margin-top:10px;">CLOSE</button>
+    </div>
+    <textarea id="paper" class="paper-area" oninput="onType({{draft.id}})">{{ draft.content }}</textarea>
 </div>
 
-{% elif mode == 'search' %}
-<div class="container">
-    <h3>PubMed Search</h3>
-    <form action="/search" method="POST">
-        <input type="text" name="query" placeholder="Termos de busca...">
-        <button class="btn" style="width:100%;">BUSCAR ARTIGOS</button>
-    </form>
-    
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
-        {% for link in links %}
-        <div class="card hub-card" onclick="window.open('{{link.url}}', '_blank')">
-            <div style="font-size:2rem;">{{link.icon}}</div>
-            <b>{{link.name}}</b>
-        </div>
-        {% endfor %}
-    </div>
-</div>
+{% elif mode == 'study_play' %}
+<div class="container">{% if card %}<div class="card" style="text-align:center;padding:40px;"><h1>{{card.front}}</h1><div id="ansBox" style="display:none; margin-top:20px; border-top:1px dashed #ccc; padding-top:20px;"><h2 style="color:#2ecc71;">{{card.back}}</h2><div style="display:flex; gap:10px; margin-top:20px;"><button class="btn" style="background:#d63031;" onclick="submitRating('hard')">Hard</button><button class="btn" style="background:#00b894;" onclick="submitRating('easy')">Easy</button></div></div></div><div style="display:flex; gap:10px; margin-top:10px;"><button class="btn" onclick="speak('{{card.front}}')">📢 LISTEN</button><button class="btn" style="background:#34495e" onclick="document.getElementById('ansBox').style.display='block'">SHOW</button></div>{% else %}<div class="card" style="text-align:center;padding:40px;"><h3>Done!</h3><a href="/" class="btn">HOME</a></div>{% endif %}</div>
+
+{% elif mode == 'vocab_list' %}
+<div class="container"><h3>Vocabulary</h3>{% for c in cards %}<div class="card" style="padding:10px; margin-bottom:5px; display:flex; justify-content:space-between;"><b>{{c.front}}</b> <small>{{c.back}}</small></div>{% endfor %}</div>
+
+{% elif mode == 'tutor' %}
+<div class="container"><h3>AI Tutor</h3><form action="/tutor" method="POST"><textarea name="pt_text" style="height:100px;"></textarea><button class="btn">TRANSLATE & EXPLAIN</button></form>{% if res %}<div class="card" style="margin-top:20px;"><p onclick="speak(this.innerText)">{{res.en}}</p></div>{% endif %}</div>
 
 {% endif %}
 
-</body>
-</html>
+<div class="player"><div class="controls-row"><button id="playBtn" class="btn" style="border-radius:50%;width:50px;" onclick="togglePlay()">▶</button><select onchange="acc=this.value"><option value="com">🇺🇸</option><option value="co.uk">🇬🇧</option></select></div></div>
+
+<div id="dictMod" class="modal">
+    <div class="modal-content">
+        <h2 id="dictWord">Word</h2>
+        <p id="dictTrans">...</p>
+        <input type="hidden" id="save_f">
+        <div style="display:flex; gap:10px;">
+            <button class="btn" onclick="speak(document.getElementById('dictWord').innerText)">🔊</button>
+            <button class="btn" style="background:#27ae60;" onclick="saveDict()">💾 SAVE</button>
+        </div>
+        <button class="btn" style="background:#888; margin-top:10px; width:100%;" onclick="toggleModal('dictMod')">CLOSE</button>
+    </div>
+</div>
+
+</body></html>
