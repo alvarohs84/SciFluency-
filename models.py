@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 
-# Inicializamos o db
 db = SQLAlchemy()
 
 class Deck(db.Model):

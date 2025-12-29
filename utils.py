@@ -1,11 +1,53 @@
 import re
-import random
-from deep_translator import GoogleTranslator
-import eng_to_ipa as ipa
+import json
+import asyncio
+import edge_tts
+from io import BytesIO
 from collections import Counter
+from deep_translator import GoogleTranslator
 from pypdf import PdfReader
+from gtts import gTTS
+from Bio import Entrez
+import eng_to_ipa as ipa
+import time
 
-# Constantes e Dicionários
+# --- CONFIGURAÇÕES ---
+Entrez.email = "researcher@example.com"
+Entrez.tool = "SciFluencyResearch"
+
+# --- DADOS CONSTANTES ---
+VOICE_MAPPING = {
+    'com': 'en-US-ChristopherNeural',
+    'co.uk': 'en-GB-RyanNeural',
+    'pt': 'pt-BR-AntonioNeural'
+}
+
+ACADEMIC_PHRASEBANK = {
+    "1. Introduction & Context": [
+        {"en": "Recent developments in this field have heightened the need for...", "pt": "Desenvolvimentos recentes neste campo aumentaram a necessidade de..."},
+        {"en": "Currently, there is a paucity of data regarding...", "pt": "Atualmente, há escassez de dados sobre..."},
+        {"en": "This study aims to investigate the relationship between...", "pt": "Este estudo visa investigar a relação entre..."},
+        {"en": "Previous research has established that...", "pt": "Pesquisas anteriores estabeleceram que..."}
+    ],
+    "2. Methods & Materials": [
+        {"en": "Data were collected using a semi-structured interview guide.", "pt": "Os dados foram coletados usando um roteiro de entrevista semiestruturado."},
+        {"en": "The participants were divided into two groups.", "pt": "Os participantes foram divididos em dois grupos."},
+        {"en": "Statistical analysis was performed using SPSS software.", "pt": "A análise estatística foi realizada usando o software SPSS."}
+    ],
+    "3. Results & Findings": [
+        {"en": "There was a significant correlation between...", "pt": "Houve uma correlação significativa entre..."},
+        {"en": "The results indicate that...", "pt": "Os resultados indicam que..."}
+    ],
+    "4. Discussion & Argumentation": [
+        {"en": "These findings suggest that...", "pt": "Esses achados sugerem que..."},
+        {"en": "However, some limitations should be noted.", "pt": "No entanto, algumas limitações devem ser notadas."}
+    ],
+    "5. Conclusion": [
+        {"en": "In conclusion, this study demonstrates that...", "pt": "Em conclusão, este estudo demonstra que..."},
+        {"en": "The evidence from this study suggests...", "pt": "As evidências deste estudo sugerem..."}
+    ]
+}
+
 ACADEMIC_REPLACEMENTS = {
     "big": "substantial", "huge": "significant", "bad": "detrimental",
     "good": "beneficial", "think": "hypothesize", "get": "obtain",
@@ -13,12 +55,34 @@ ACADEMIC_REPLACEMENTS = {
     "really": "significantly", "very": "highly", "look at": "examine",
     "prove": "validate", "change": "alter", "stop": "cease"
 }
+
 MANUAL_DICT = {
     "rins": "Kidneys", "rim": "Kidney", "pulmão": "Lung", "pulmoes": "Lungs",
     "coração": "Heart", "figado": "Liver", "cerebro": "Brain",
     "metástase": "Metastasis", "metastases": "Metastases", "casa": "House"
 }
+
 MORPHOLOGY_DB = {"un": "Not (Não)", "re": "Again (Novamente)", "itis": "Inflammation"}
+
+# --- FUNÇÕES ---
+async def generate_neural_audio(text, voice):
+    communicate = edge_tts.Communicate(text, voice)
+    audio_data = BytesIO()
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data.write(chunk["data"])
+    audio_data.seek(0)
+    return audio_data
+
+def get_audio_sync(text, accent='com'):
+    voice = VOICE_MAPPING.get(accent, 'en-US-ChristopherNeural')
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(generate_neural_audio(text, voice))
+    except Exception as e:
+        print(f"Erro Neural TTS: {e}")
+        return None
 
 def get_phonetic(text):
     if not text: return ""
@@ -73,7 +137,6 @@ def generate_smart_quiz(text):
         to_hide = set()
     for i, w in enumerate(words):
         if i in to_hide:
-            clean_w = re.sub(r'[^\w]', '', w)
             output.append(f"<span class='quiz-hidden' onclick='reveal(this, \"{w}\")'>[ ? ]</span>")
         else:
             output.append(w)
@@ -122,21 +185,21 @@ def parse_nbib_bulk(content):
 def format_abstract_smart(text):
     if not text: return ""
     formatted = text
+    formatted = re.sub(r'\s+', ' ', formatted)
     sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
     for sec in sections:
         pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
-        if pattern.search(formatted):
-            formatted = pattern.sub(r"<br><br><b style='color:#2c3e50;'>\1</b>", formatted)
+        formatted = pattern.sub(r"<br><br><b>\1</b>", formatted)
     sentences = re.split(r'(?<=[.!?])\s+', formatted)
     final_html = ""
     for sent in sentences:
         if len(sent.strip()) > 1:
             words_html = ""
             for word in sent.split():
-                clean_w = re.sub(r"[^\w']", "", word)
+                clean_w = re.sub(r"[^\w]", "", word) 
                 if clean_w:
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            final_html += f"<span class='k-sent' onclick='prepare(this, \"{sent}\")'>{words_html}</span>"
+            final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:8px; padding:8px; cursor:pointer; line-height:1.6;'>{words_html}</div>"
     return final_html
