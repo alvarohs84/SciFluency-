@@ -247,7 +247,7 @@ def parse_nbib_bulk(content):
 def format_abstract_smart(text):
     if not text: return ""
     formatted = text
-    # Destaque de seções (Bold)
+    # Destaque de seções
     sections = ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "CONCLUSION", "DISCUSSION"]
     for sec in sections:
         pattern = re.compile(rf"({sec}[:\s])", re.IGNORECASE)
@@ -260,12 +260,17 @@ def format_abstract_smart(text):
         if len(sent.strip()) > 1:
             words_html = ""
             for word in sent.split():
-                clean_w = re.sub(r"[^\w']", "", word)
+                # --- CORREÇÃO DE ASPAS AQUI ---
+                # Removemos aspas simples da palavra que vai para a função JavaScript
+                clean_w = re.sub(r"[^\w]", "", word) 
+                
                 if clean_w:
+                    # 'onclick' agora usa a palavra limpa sem aspas para não quebrar o HTML
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            # AQUI ESTÁ A CORREÇÃO: Removemos o texto do onclick. O JS vai ler o conteúdo.
+            
+            # Adiciona o clique de áudio para a frase inteira
             final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
@@ -406,7 +411,7 @@ def summarizer():
             if f.filename:
                 try:
                     if f.filename.lower().endswith('.pdf'):
-                        # LIMPEZA CRÍTICA: Remove quebras de linha estranhas de PDFs
+                        # LIMPEZA DE PDF PARA TEXTO CONTÍNUO
                         raw_pdf_text = " ".join([page.extract_text() or "" for page in PdfReader(f).pages])
                         clean_pdf_text = re.sub(r'\s+', ' ', raw_pdf_text).strip()
                         content_to_process = [{"title": f.filename, "abstract": clean_pdf_text}]
@@ -680,7 +685,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (CORRIGIDO PARA ÁUDIO UNIFICADO) ---
+# --- FRONTEND (JAVASCRIPT E HTML BLINDADOS) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -768,6 +773,9 @@ async function speak(txt){
         
         curAud.onloadedmetadata = () => { 
             let totalChars = 0;
+            // Se nao tiver spans (ex: PDF ruim), fallback para o container
+            if (sentSpans.length === 0) sentSpans = [document.body]; // Evita crash
+            
             let weights = sentSpans.map(span => { let len = span.innerText.length; totalChars += len; return len; });
             let current = 0; cumWeights = weights.map(w => { current += w; return (current / totalChars); });
             curAud.play(); btn.innerText='⏸'; loop(); 
@@ -778,17 +786,19 @@ async function speak(txt){
 
 function togglePlay(){ if(!curAud) return; const btn=document.getElementById('playBtn'); if(curAud.paused){ curAud.play(); btn.innerText='⏸'; loop(); } else{ curAud.pause(); btn.innerText='▶'; cancelAnimationFrame(aFrm); } }
 
-// --- FUNÇÃO PREPARE UNIFICADA (CORREÇÃO DO BUG) ---
-function prepare(el) {
+// --- FUNÇÃO DE PREPARAÇÃO ROBUSTA ---
+function prepare(el){ 
     if(curAud){curAud.pause(); cancelAnimationFrame(aFrm);} 
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
     
-    // Tenta encontrar palavras individuais (para karaokê detalhado)
+    // Tenta pegar spans de palavras individuais
     sentSpans = Array.from(el.querySelectorAll('.word-span')); 
-    if(sentSpans.length === 0) {
-        // Fallback: se não houver spans de palavras, usa a própria sentença
-        sentSpans = [el];
-    }
+    
+    // Se nao achou spans (ex: modo leitura simples), tenta spans de frases
+    if (sentSpans.length === 0) sentSpans = Array.from(el.querySelectorAll('.k-sent'));
+    
+    // Se ainda vazio, usa o próprio elemento clicado como bloco único
+    if (sentSpans.length === 0) sentSpans = [el];
     
     let textToRead = el.innerText; 
     speak(textToRead); 
