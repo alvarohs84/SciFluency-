@@ -265,7 +265,8 @@ def format_abstract_smart(text):
                     words_html += f"<span class='word-span' onclick='mineWord(event, \"{clean_w}\")'>{word}</span> "
                 else:
                     words_html += word + " "
-            # Sem atributos conflitantes, apenas o evento
+            
+            # ATENÇÃO: Aqui definimos a estrutura que o JS vai ler
             final_html += f"<div class='sentence-block' onclick='prepare(this)' style='margin-bottom:5px; padding:5px; cursor:pointer;'>{words_html}</div>"
     return final_html
 
@@ -311,6 +312,7 @@ def tts_route():
         accent = request.args.get('accent', 'com')
     fp = BytesIO()
     try: 
+        # OBTEM AUDIO DO GOOGLE (Servidor)
         gTTS(text=text, lang='en', tld=accent).write_to_fp(fp)
         fp.seek(0)
         return send_file(fp, mimetype='audio/mpeg')
@@ -679,7 +681,7 @@ with app.app_context():
     check_and_migrate_db()
     seed_database()
 
-# --- FRONTEND (HÍBRIDO: AUDIO SERVER + JS TIMER PROPORCIONAL) ---
+# --- FRONTEND (KARAOKE HARDWARE SYNC) ---
 PAGE_LAYOUT = r"""
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ app_name }}</title>
@@ -747,7 +749,6 @@ body.mode-mine .word-span:hover { background: #f39c12; color: white; border-radi
 <script>
 let curAud = null;
 let currentSpans = [];
-let karaokeTimeout = null;
 let rate = 1.0;
 let acc = 'com'; 
 let shadowRec = null; 
@@ -758,10 +759,9 @@ function closeNav(){document.getElementById("side").style.width="0";}
 function toggleTheme() { document.body.classList.toggle('dark-mode'); const isDark = document.body.classList.contains('dark-mode'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeIcon').innerText = isDark ? '☀️' : '🌙'; }
 window.onload = () => { document.body.classList.add('mode-read'); if(localStorage.getItem('theme') === 'dark') { document.body.classList.add('dark-mode'); if(document.getElementById('themeIcon')) document.getElementById('themeIcon').innerText = '☀️'; } };
 
-// --- ESTRATÉGIA HÍBRIDA COM TIMING PONDERADO ---
+// --- ESTRATÉGIA DE SINCRONIZAÇÃO POR HARDWARE (TimeUpdate) ---
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
-    if(karaokeTimeout) clearTimeout(karaokeTimeout);
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active'));
 
     const btn = document.getElementById('playBtn'); btn.innerText='⏳'; 
@@ -779,60 +779,63 @@ async function speak(text){
         curAud = new Audio(url); 
         curAud.playbackRate = rate; 
         
+        // --- LÓGICA DE MAPEAR PALAVRAS (REVISADA) ---
+        // 1. O texto do audio é 'cleanTxt'.
+        // 2. Os spans visuais devem corresponder a esse texto.
+        // O truque: calcular a proporção de cada palavra visual no total de caracteres
+        
+        let totalChars = 0;
+        let wordMap = []; 
+        
+        // Mapeia onde cada palavra visual começa e termina em caracteres
+        currentSpans.forEach(span => {
+            let len = span.innerText.length;
+            wordMap.push({
+                el: span,
+                start: totalChars,
+                end: totalChars + len
+            });
+            // Adiciona 1 pq o TTS do Google lê espaços implicitamente
+            totalChars += len + 1; 
+        });
+
+        // Evento que dispara várias vezes por segundo enquanto toca
+        curAud.ontimeupdate = () => {
+            if(!curAud.duration) return;
+            
+            // Qual porcentagem do áudio já tocou? (0.0 a 1.0)
+            let progress = curAud.currentTime / curAud.duration;
+            
+            // Em qual caractere do texto estamos?
+            let currentChar = Math.floor(progress * totalChars);
+            
+            // Acha a palavra correspondente a esse caractere
+            // Otimização: remove highlight antigo antes de buscar o novo
+            let found = false;
+            for(let w of wordMap) {
+                if(currentChar >= w.start && currentChar < w.end) { // < w.end para não pegar o espaço
+                    if (!w.el.classList.contains('word-active')) {
+                        document.querySelectorAll('.word-active').forEach(old => old.classList.remove('word-active'));
+                        w.el.classList.add('word-active');
+                    }
+                    found = true;
+                    break; 
+                }
+            }
+            if(!found) document.querySelectorAll('.word-active').forEach(old => old.classList.remove('word-active'));
+        };
+
         curAud.onloadedmetadata = () => { 
             btn.innerText='⏸';
             curAud.play();
-            // Inicia o Karaoke Ponderado
-            startWeightedKaraoke(curAud.duration);
         }; 
         
         curAud.onended = () => { 
             btn.innerText='▶'; 
-            if(karaokeTimeout) clearTimeout(karaokeTimeout);
             document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
         }; 
         
     } catch (error) { console.error("TTS Error:", error); btn.innerText='⚠️'; } 
-}
-
-function startWeightedKaraoke(duration) {
-    if (currentSpans.length === 0) return;
-    
-    // Calcula o peso total (número de caracteres)
-    let weights = currentSpans.map(span => span.innerText.length);
-    let totalWeight = weights.reduce((a, b) => a + b, 0);
-    
-    // Tempo total em ms ajustado pela velocidade
-    let totalTimeMs = (duration * 1000) / rate;
-    
-    // Quanto tempo vale 1 caractere?
-    let timePerWeight = totalTimeMs / totalWeight;
-    
-    let index = 0;
-    
-    // Função recursiva para acender a próxima palavra
-    function nextWord() {
-        if (index >= currentSpans.length) {
-            clearTimeout(karaokeTimeout);
-            return;
-        }
-        
-        // Remove destaque anterior
-        if (index > 0) currentSpans[index-1].classList.remove('word-active');
-        
-        // Adiciona destaque atual
-        currentSpans[index].classList.add('word-active');
-        
-        // Calcula quanto tempo essa palavra deve ficar acesa
-        // (comprimento da palavra * tempo por caractere)
-        let delay = weights[index] * timePerWeight;
-        
-        index++;
-        karaokeTimeout = setTimeout(nextWord, delay);
-    }
-    
-    // Começa
-    nextWord();
 }
 
 function togglePlay(){ 
@@ -844,19 +847,26 @@ function togglePlay(){
     } else{ 
         curAud.pause(); 
         btn.innerText='▶'; 
-        if(karaokeTimeout) clearTimeout(karaokeTimeout);
     } 
 }
 
 function prepare(el){ 
-    if(curAud){curAud.pause(); if(karaokeTimeout) clearTimeout(karaokeTimeout);} 
+    if(curAud){curAud.pause();} 
     document.querySelectorAll('.word-active').forEach(w=>w.classList.remove('word-active')); 
     
     currentSpans = Array.from(el.querySelectorAll('.word-span')); 
-    if (currentSpans.length === 0) currentSpans = Array.from(el.querySelectorAll('.k-sent'));
-    if (currentSpans.length === 0) currentSpans = [el];
     
-    let textToRead = el.innerText; 
+    // Se não achou spans (ex: modo leitura simples), tenta spans de frases
+    if (currentSpans.length === 0) {
+        let textToRead = el.innerText;
+        speak(textToRead);
+        return; // Sai se não tiver palavras individuais para mapear
+    }
+    
+    // Constrói o texto EXATO que vai pro áudio baseado nos spans visuais
+    // Isso garante que o mapa de caracteres do JS bata com o áudio gerado
+    let textToRead = currentSpans.map(s => s.innerText).join(" ");
+    
     speak(textToRead); 
 }
 
@@ -870,6 +880,7 @@ function nextWord() { if(wordPool.length > 0) { const w = wordPool[Math.floor(Ma
 function toggleShadow(btn, e) {
     e.stopPropagation();
     if(curAud) { curAud.pause(); document.getElementById('playBtn').innerText='▶'; }
+    
     if (btn.classList.contains('shadow-recording')) {
         if(shadowRec && shadowRec.state !== 'inactive') shadowRec.stop();
         btn.classList.remove('shadow-recording');
