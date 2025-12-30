@@ -151,8 +151,10 @@ function copyText(el) {
     </form>
 </div>
 {% for r in references %}
-<div class="card"><b>{{r.title}}</b><br><small>{{r.authors}} ({{r.year}})</small>
-<div style="margin-top:10px; display:flex; gap:5px;"><a href="/read_ref/{{r.id}}" class="btn btn-sm">Estudar</a><button class="btn btn-sm" onclick="openCitation({{r.id}})" style="background:#f39c12;">❞ Citar</button><a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#e74c3c;">X</a></div>
+<div class="card">
+    <b>{{r.title}}</b><br><small>{{r.authors}} ({{r.year}})</small>
+    {% if r.url %}<br><a href="{{r.url}}" target="_blank" style="color:var(--p); font-size:0.9rem;">🔗 Link Original</a>{% endif %}
+    <div style="margin-top:10px; display:flex; gap:5px;"><a href="/read_ref/{{r.id}}" class="btn btn-sm">Estudar</a><button class="btn btn-sm" onclick="openCitation({{r.id}})" style="background:#f39c12;">❞ Citar</button><a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#e74c3c;">X</a></div>
 </div>{% endfor %}</div>
 
 {% elif mode == 'search' %}
@@ -174,7 +176,7 @@ function copyText(el) {
             <p style="font-size:0.9rem; color:#555; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">{{r.abstract}}</p>
             <div style="margin-top:15px; display:flex; gap:10px;">
                 <a href="{{r.url}}" target="_blank" class="btn btn-sm" style="background:#2d3436;">↗ Ver</a>
-                <a href="/import_pubmed/{{r.pmid}}" class="btn btn-sm" style="background:var(--t);">+ Salvar na Lib</a>
+                <a href="/import_pubmed/{{r.pmid}}" class="btn btn-sm" style="background:var(--t);">+ Adicionar ao Gestor</a>
             </div>
         </div>
         {% else %}

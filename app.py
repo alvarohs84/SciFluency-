@@ -34,13 +34,24 @@ def fix_db():
         try:
             db.create_all()
             inspector = inspect(db.engine)
+            
+            # Checa tabela Card
             if inspector.has_table('card'):
                 cols = [c['name'] for c in inspector.get_columns('card')]
                 with db.engine.connect() as conn:
                     if 'ease_factor' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN ease_factor FLOAT DEFAULT 2.5")); conn.commit()
                     if 'context' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN context TEXT")); conn.commit()
                     if 'ipa' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN ipa VARCHAR(200)")); conn.commit()
-        except: pass
+            
+            # Checa tabela Reference (Adiciona URL)
+            if inspector.has_table('reference'):
+                cols = [c['name'] for c in inspector.get_columns('reference')]
+                with db.engine.connect() as conn:
+                    if 'url' not in cols: 
+                        conn.execute(text("ALTER TABLE reference ADD COLUMN url VARCHAR(500)"))
+                        conn.commit()
+                        
+        except Exception as e: print(e)
 fix_db()
 
 @app.route('/')
@@ -54,23 +65,30 @@ def index():
     stats = {"vocab": Card.query.count(), "refs": Reference.query.count(), "stories": Story.query.count()}
     return render_template('layout.html', mode='dashboard', stats=stats, app_name=APP_NAME)
 
-# --- BUSCA PUBMED COM PAGINAÇÃO ---
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     results = []
-    # Pega query do form (POST) ou da URL (GET para paginação)
     query = request.form.get('query') or request.args.get('query', '')
-    
-    # Pega índice de início (padrão 0)
     try: start = int(request.args.get('start', 0))
     except: start = 0
-    
-    if query:
-        results = utils.search_pubmed(query, start=start)
-        
+    if query: results = utils.search_pubmed(query, start=start)
     return render_template('layout.html', mode='search', results=results, query=query, start=start, app_name=APP_NAME)
 
-# --- UPLOAD MULTIPLO & RIS ---
+@app.route('/import_pubmed/<pmid>')
+def import_pubmed(pmid):
+    try:
+        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="medline", retmode="text")
+        raw = handle.read()
+        title = re.search(r'TI  - (.*)', raw).group(1) if re.search(r'TI  - (.*)', raw) else f"PubMed {pmid}"
+        abstract = re.search(r'AB  - (.*)', raw, re.DOTALL)
+        ab_clean = abstract.group(1)[:600]+"..." if abstract else "..."
+        url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+        
+        db.session.add(Reference(title=title, authors="Via PubMed", year=datetime.now().strftime('%Y'), status='to_read', pdf_filename="", abstract=ab_clean, url=url, project_id="thesis"))
+        db.session.commit()
+        return redirect(url_for('library'))
+    except: return "Erro Import"
+
 @app.route('/library', methods=['GET', 'POST'])
 def library():
     if request.method == 'POST':
@@ -92,23 +110,10 @@ def library():
             elif ext in ['ris', 'nbib', 'txt']:
                 parsed = utils.parse_bib_file(f.read().decode('utf-8', errors='ignore'))
                 for r in parsed:
-                    db.session.add(Reference(title=r.get('title','Sem Título'), authors=r.get('authors','Desconhecido'), year=r.get('year','s.d.'), abstract=r.get('abstract',''), status='to_read', pdf_filename="", project_id="thesis"))
+                    db.session.add(Reference(title=r.get('title','Sem Título'), authors=r.get('authors','Desconhecido'), year=r.get('year','s.d.'), abstract=r.get('abstract',''), url=r.get('url',''), status='to_read', pdf_filename="", project_id="thesis"))
         db.session.commit()
         return redirect(url_for('library'))
     return render_template('layout.html', mode='library', references=Reference.query.order_by(Reference.id.desc()).all(), app_name=APP_NAME)
-
-@app.route('/import_pubmed/<pmid>')
-def import_pubmed(pmid):
-    try:
-        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="medline", retmode="text")
-        raw = handle.read()
-        title = re.search(r'TI  - (.*)', raw).group(1) if re.search(r'TI  - (.*)', raw) else f"PubMed {pmid}"
-        abstract = re.search(r'AB  - (.*)', raw, re.DOTALL)
-        ab_clean = abstract.group(1)[:600]+"..." if abstract else "..."
-        db.session.add(Reference(title=title, authors="Via PubMed", year=datetime.now().strftime('%Y'), status='to_read', pdf_filename="", abstract=ab_clean, project_id="thesis"))
-        db.session.commit()
-        return redirect(url_for('library'))
-    except: return "Erro Import"
 
 @app.route('/read_ref/<int:id>')
 def read_ref(id):
@@ -126,6 +131,12 @@ def read_ref(id):
     db.session.commit()
     return redirect(url_for('ler', id=sid))
 
+@app.route('/get_citation/<int:id>')
+def get_citation(id):
+    r = Reference.query.get(id)
+    return jsonify(utils.generate_citation_formats(r)) if r else jsonify({"error": "404"})
+
+# --- OUTRAS ROTAS ---
 @app.route('/novo', methods=['GET', 'POST'])
 def novo():
     if request.method == 'POST':
@@ -167,16 +178,16 @@ def add_vocab():
     db.session.commit()
     return jsonify({'status':'ok'})
 
+@app.route('/tts', methods=['POST'])
+def tts():
+    a = utils.get_audio_sync(request.form.get('text'), request.form.get('accent'))
+    return send_file(a, mimetype='audio/mpeg') if a else ("Erro",500)
+
 @app.route('/pronunciation')
 def pronunciation():
     c = Card.query.order_by(db.func.random()).limit(10).all()
     w = [{"w": x.front, "ipa": x.ipa} for x in c] if c else [{"w":"Science", "ipa":"/ˈsaɪ.əns/"}]
     return render_template('layout.html', mode='pronunciation', words_json=json.dumps(w), app_name=APP_NAME)
-
-@app.route('/get_citation/<int:id>')
-def get_citation(id):
-    r = Reference.query.get(id)
-    return jsonify(utils.generate_citation_formats(r)) if r else jsonify({"error": "404"})
 
 @app.route('/writer')
 def writer(): return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
@@ -210,10 +221,6 @@ def summarizer():
         db.session.commit()
         return redirect(url_for('ler', id=sid))
     return render_template('layout.html', mode='summarizer', app_name=APP_NAME)
-@app.route('/tts', methods=['POST'])
-def tts():
-    a = utils.get_audio_sync(request.form.get('text'), request.form.get('accent'))
-    return send_file(a, mimetype='audio/mpeg') if a else ("Erro",500)
 @app.route('/delete_story/<id>')
 def delete_story(id): db.session.delete(Story.query.get(id)); db.session.commit(); return redirect(url_for('index'))
 @app.route('/delete_ref/<int:id>')

@@ -8,11 +8,9 @@ from deep_translator import GoogleTranslator
 from Bio import Entrez
 import eng_to_ipa as ipa
 
-# Configurações
 Entrez.email = "student@scifluency.com"
 VOICE_MAPPING = {'com': 'en-US-ChristopherNeural', 'co.uk': 'en-GB-RyanNeural'}
 
-# Frases e Substituições
 ACADEMIC_PHRASEBANK = {
     "1. Introduction": [{"en": "Recent developments...", "pt": "Desenvolvimentos..."}],
     "2. Methods": [{"en": "Data were collected...", "pt": "Dados coletados..."}],
@@ -21,7 +19,6 @@ ACADEMIC_PHRASEBANK = {
 }
 ACADEMIC_REPLACEMENTS = {"big": "substantial", "huge": "significant", "bad": "detrimental", "good": "beneficial", "think": "hypothesize"}
 
-# --- PARSER RIS/NBIB ---
 def parse_bib_file(content):
     references = []
     current = {}
@@ -39,17 +36,20 @@ def parse_bib_file(content):
             match = re.search(r'\d{4}', line)
             if match: current['year'] = match.group(0)
         elif line.startswith("AB  - ") or line.startswith("N2  - "): current['abstract'] = line[6:]
+        elif line.startswith("UR  - ") or line.startswith("L1  - "): current['url'] = line[6:] # Captura URL do RIS
     if current.get('title'): references.append(current)
     return references
 
-# --- CITAÇÕES ---
+# --- GERADOR DE CITAÇÕES (8 MODELOS) ---
 def generate_citation_formats(ref):
     if not ref: return {}
     aut = ref.authors if ref.authors else "AUTOR"
     title = ref.title if ref.title else "Título"
     year = ref.year if ref.year else "s.d."
+    url = f" Disponível em: <{ref.url}>." if ref.url else ""
+    
     return {
-        "abnt": f"{aut.upper()}. <b>{title}</b>. {year}.",
+        "abnt": f"{aut.upper()}. <b>{title}</b>. {year}.{url}",
         "apa": f"{aut}. ({year}). <i>{title}</i>.",
         "vancouver": f"{aut}. {title}. {year}.",
         "ama": f"{aut}. {title}. {year}.",
@@ -59,11 +59,9 @@ def generate_citation_formats(ref):
         "chicago": f"{aut}. \"{title}.\" {year}."
     }
 
-# --- PUBMED COM PAGINAÇÃO ---
 def search_pubmed(query, start=0):
     if not query: return []
     try:
-        # retstart define o início da lista
         handle = Entrez.esearch(db="pubmed", term=query, retmax=10, retstart=start, sort="relevance")
         id_list = Entrez.read(handle)['IdList']
         handle.close()
@@ -96,7 +94,6 @@ def search_pubmed(query, start=0):
         print(e)
         return []
 
-# --- AUXILIARES ---
 async def generate_neural_audio(text, voice):
     communicate = edge_tts.Communicate(text, voice)
     audio_data = BytesIO()
