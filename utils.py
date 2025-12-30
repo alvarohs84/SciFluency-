@@ -12,23 +12,17 @@ import eng_to_ipa as ipa
 Entrez.email = "student@scifluency.com"
 VOICE_MAPPING = {'com': 'en-US-ChristopherNeural', 'co.uk': 'en-GB-RyanNeural'}
 
-# Banco de Frases
+# Frases e Substituições
 ACADEMIC_PHRASEBANK = {
-    "1. Introduction": [{"en": "Recent developments in this field have heightened the need for...", "pt": "Desenvolvimentos recentes..."}],
-    "2. Methods": [{"en": "Data were collected using a semi-structured interview...", "pt": "Dados coletados via..."}],
-    "3. Results": [{"en": "The results indicate that...", "pt": "Os resultados indicam que..."}],
-    "4. Discussion": [{"en": "These findings suggest that...", "pt": "Esses achados sugerem..."}]
+    "1. Introduction": [{"en": "Recent developments...", "pt": "Desenvolvimentos..."}],
+    "2. Methods": [{"en": "Data were collected...", "pt": "Dados coletados..."}],
+    "3. Results": [{"en": "The results indicate...", "pt": "Resultados indicam..."}],
+    "4. Discussion": [{"en": "These findings suggest...", "pt": "Achados sugerem..."}]
 }
+ACADEMIC_REPLACEMENTS = {"big": "substantial", "huge": "significant", "bad": "detrimental", "good": "beneficial", "think": "hypothesize"}
 
-ACADEMIC_REPLACEMENTS = {
-    "big": "substantial", "huge": "significant", "bad": "detrimental",
-    "good": "beneficial", "think": "hypothesize", "get": "obtain",
-    "make": "generate", "show": "demonstrate"
-}
-
-# --- PARSER DE ARQUIVOS BIBLIOGRÁFICOS (RIS / NBIB) ---
+# --- PARSER RIS/NBIB ---
 def parse_bib_file(content):
-    """Lê texto RIS/NBIB e retorna lista de referências"""
     references = []
     current = {}
     lines = content.replace('\r\n', '\n').split('\n')
@@ -45,17 +39,15 @@ def parse_bib_file(content):
             match = re.search(r'\d{4}', line)
             if match: current['year'] = match.group(0)
         elif line.startswith("AB  - ") or line.startswith("N2  - "): current['abstract'] = line[6:]
-
     if current.get('title'): references.append(current)
     return references
 
-# --- CITAÇÕES (8 FORMATOS) ---
+# --- CITAÇÕES ---
 def generate_citation_formats(ref):
     if not ref: return {}
     aut = ref.authors if ref.authors else "AUTOR"
     title = ref.title if ref.title else "Título"
     year = ref.year if ref.year else "s.d."
-    
     return {
         "abnt": f"{aut.upper()}. <b>{title}</b>. {year}.",
         "apa": f"{aut}. ({year}). <i>{title}</i>.",
@@ -67,12 +59,12 @@ def generate_citation_formats(ref):
         "chicago": f"{aut}. \"{title}.\" {year}."
     }
 
-# --- PUBMED API ---
-def search_pubmed(query):
-    """Busca rica com link e PMID"""
+# --- PUBMED COM PAGINAÇÃO ---
+def search_pubmed(query, start=0):
     if not query: return []
     try:
-        handle = Entrez.esearch(db="pubmed", term=query, retmax=10, sort="relevance")
+        # retstart define o início da lista
+        handle = Entrez.esearch(db="pubmed", term=query, retmax=10, retstart=start, sort="relevance")
         id_list = Entrez.read(handle)['IdList']
         handle.close()
         if not id_list: return []
@@ -96,7 +88,6 @@ def search_pubmed(query):
                     curr['url'] = f"https://pubmed.ncbi.nlm.nih.gov/{curr['pmid']}/"
                     articles.append(curr)
                 curr = {'pmid': val, 'title': '...', 'abstract': '...', 'journal': 'PubMed'}
-        
         if 'title' in curr:
              curr['url'] = f"https://pubmed.ncbi.nlm.nih.gov/{curr['pmid']}/"
              articles.append(curr)
@@ -125,7 +116,7 @@ def get_audio_sync(text, accent='com'):
 
 def format_abstract_smart(text):
     formatted = re.sub(r'\s+', ' ', text).strip()
-    for sec in ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "INTRODUCTION"]:
+    for sec in ["BACKGROUND", "OBJECTIVE", "METHODS", "RESULTS", "CONCLUSIONS", "DISCUSSION"]:
         formatted = re.sub(rf"({sec}[:\s])", r"<br><br><b style='color:#2980b9'>\1</b>", formatted, flags=re.IGNORECASE)
     return formatted
 

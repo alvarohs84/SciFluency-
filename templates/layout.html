@@ -155,6 +155,45 @@ function copyText(el) {
 <div style="margin-top:10px; display:flex; gap:5px;"><a href="/read_ref/{{r.id}}" class="btn btn-sm">Estudar</a><button class="btn btn-sm" onclick="openCitation({{r.id}})" style="background:#f39c12;">❞ Citar</button><a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#e74c3c;">X</a></div>
 </div>{% endfor %}</div>
 
+{% elif mode == 'search' %}
+<div class="container">
+    <h3>PubMed Search</h3>
+    <form action="/search" method="POST" style="display:flex; gap:5px;">
+        <input type="text" name="query" value="{{query}}" placeholder="Ex: diabetes..." required>
+        <button class="btn">🔍</button>
+    </form>
+    
+    <div style="margin-top:20px;">
+        {% for r in results %}
+        <div class="card">
+            <div style="display:flex; justify-content:space-between;">
+                <span style="background:#e1f5fe; color:var(--p); padding:2px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">{{r.journal}}</span>
+                <small style="color:#999;">PMID: {{r.pmid}}</small>
+            </div>
+            <h4 style="margin:10px 0;">{{r.title}}</h4>
+            <p style="font-size:0.9rem; color:#555; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">{{r.abstract}}</p>
+            <div style="margin-top:15px; display:flex; gap:10px;">
+                <a href="{{r.url}}" target="_blank" class="btn btn-sm" style="background:#2d3436;">↗ Ver</a>
+                <a href="/import_pubmed/{{r.pmid}}" class="btn btn-sm" style="background:var(--t);">+ Salvar na Lib</a>
+            </div>
+        </div>
+        {% else %}
+            {% if query %}<p style="text-align:center; margin-top:20px;">Fim dos resultados.</p>{% endif %}
+        {% endfor %}
+    </div>
+
+    {% if results or start > 0 %}
+    <div style="display:flex; justify-content:center; gap:10px; margin-top:20px;">
+        {% if start > 0 %}
+        <a href="/search?query={{query}}&start={{start - 10}}" class="btn" style="background:#b2bec3;">⬅ Anterior</a>
+        {% endif %}
+        {% if results|length == 10 %}
+        <a href="/search?query={{query}}&start={{start + 10}}" class="btn">Próxima ➡</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
 {% elif mode == 'writer' %}
 <div class="container"><h3>Writer</h3><textarea style="width:100%; height:400px; padding:15px; font-family:Georgia; line-height:1.6;"></textarea></div>
 
@@ -171,9 +210,6 @@ function copyText(el) {
 
 {% elif mode == 'pronunciation' %}
 <div class="container" style="text-align:center;"><script>const words={{ words_json | safe }};</script><div class="card" style="padding:40px;"><h1 id="pWord">Ready?</h1><p id="pIpa" style="color:var(--p); font-family:monospace; font-size:1.2rem;">...</p><button id="mic" class="mic-btn" onclick="startRec(document.getElementById('pWord').innerText)">🎤</button><h3 id="fb">Toque e Fale</h3><button class="btn" onclick="let w=words[Math.floor(Math.random()*words.length)]; document.getElementById('pWord').innerText=w.w; document.getElementById('pIpa').innerText=w.ipa;">Próxima</button></div></div>
-
-{% elif mode == 'search' %}
-<div class="container"><h3>PubMed Search</h3><form action="/search" method="POST" style="display:flex; gap:5px;"><input type="text" name="query" placeholder="Ex: diabetes..." required><button class="btn">🔍</button></form><div style="margin-top:20px;">{% for r in results %}<div class="card"><div style="display:flex; justify-content:space-between;"><span style="background:#e1f5fe; color:var(--p); padding:2px 8px; border-radius:4px; font-size:0.8rem; font-weight:bold;">{{r.journal}}</span><small style="color:#999;">PMID: {{r.pmid}}</small></div><h4 style="margin:10px 0;">{{r.title}}</h4><p style="font-size:0.9rem; color:#555; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">{{r.abstract}}</p><div style="margin-top:15px; display:flex; gap:10px;"><a href="{{r.url}}" target="_blank" class="btn btn-sm" style="background:#2d3436;">↗ Ver</a><a href="/import_pubmed/{{r.pmid}}" class="btn btn-sm" style="background:var(--t);">+ Salvar na Lib</a></div></div>{% endfor %}</div></div>
 
 {% elif mode == 'checker' %}
 <div class="container"><h3>Grammar Checker</h3><form action="/checker" method="POST"><textarea name="text_input" rows="5">{{original}}</textarea><button class="btn">Corrigir</button></form>{% if corrected %}<div class="card" style="background:#e1f5fe;">{{corrected|safe}}</div>{% endif %}</div>
