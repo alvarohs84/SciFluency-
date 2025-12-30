@@ -14,7 +14,7 @@ class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     front = db.Column(db.String(200)) 
     back = db.Column(db.String(200))
-    ipa = db.Column(db.String(200)) # Fonética (IPA)
+    ipa = db.Column(db.String(200)) # Fonética
     context = db.Column(db.Text)
     deck_id = db.Column(db.String(50), db.ForeignKey('deck.id'))
     
@@ -39,7 +39,7 @@ class StudyLog(db.Model):
     date = db.Column(db.String(10))
     count = db.Column(db.Integer, default=0)
 
-# --- MUNDO 2: PESQUISA ACADÊMICA (TESE & PROJETOS) ---
+# --- MUNDO 2: PESQUISA ACADÊMICA ---
 class Project(db.Model):
     id = db.Column(db.String(50), primary_key=True)
     title = db.Column(db.String(200))

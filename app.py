@@ -11,6 +11,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import text, inspect
 from pypdf import PdfReader
 from deep_translator import GoogleTranslator
+from Bio import Entrez
 
 from models import db, Deck, Card, Story, Sentence, StudyLog, Reference, Project
 import utils
@@ -54,82 +55,67 @@ def index():
     stats = {"vocab": Card.query.count(), "refs": Reference.query.count(), "stories": Story.query.count()}
     return render_template('layout.html', mode='dashboard', stats=stats, app_name=APP_NAME)
 
-# --- UPLOAD INTELIGENTE (PDF, RIS, NBIB) ---
+# --- UPLOAD MULTIPLO & RIS ---
 @app.route('/library', methods=['GET', 'POST'])
 def library():
     if request.method == 'POST':
-        # Pega LISTA de arquivos
         files = request.files.getlist('ref_files')
-        
         for f in files:
             if not f or not f.filename: continue
             filename = secure_filename(f.filename)
             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
             
-            # CASO 1: É PDF (Salva arquivo, extrai texto se der)
             if ext == 'pdf':
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                f.save(filepath)
-                
-                # Tenta extrair título do PDF (Metadados básicos)
+                f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 title = filename
                 try:
-                    reader = PdfReader(filepath)
-                    if reader.metadata and reader.metadata.title:
-                        title = reader.metadata.title
+                    r = PdfReader(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    if r.metadata and r.metadata.title: title = r.metadata.title
                 except: pass
-                
                 db.session.add(Reference(title=title, authors="Ver PDF", year="2024", status='to_read', pdf_filename=filename, project_id="thesis"))
 
-            # CASO 2: É METADADOS (RIS, NBIB) - Lê conteúdo e cria referência
             elif ext in ['ris', 'nbib', 'txt']:
-                content = f.read().decode('utf-8', errors='ignore')
-                parsed_refs = utils.parse_bib_file(content)
-                
-                for r in parsed_refs:
-                    # Cria referência sem PDF atrelado (apenas dados)
-                    db.session.add(Reference(
-                        title=r.get('title', 'Sem Título'),
-                        authors=r.get('authors', 'Desconhecido'),
-                        year=r.get('year', 's.d.'),
-                        abstract=r.get('abstract', ''),
-                        status='to_read',
-                        pdf_filename="", # Sem PDF físico
-                        project_id="thesis"
-                    ))
+                parsed = utils.parse_bib_file(f.read().decode('utf-8', errors='ignore'))
+                for r in parsed:
+                    db.session.add(Reference(title=r.get('title','Sem Título'), authors=r.get('authors','Desconhecido'), year=r.get('year','s.d.'), abstract=r.get('abstract',''), status='to_read', pdf_filename="", project_id="thesis"))
         
         db.session.commit()
         return redirect(url_for('library'))
-        
     return render_template('layout.html', mode='library', references=Reference.query.order_by(Reference.id.desc()).all(), app_name=APP_NAME)
+
+# --- PUBMED IMPORT ---
+@app.route('/import_pubmed/<pmid>')
+def import_pubmed(pmid):
+    try:
+        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="medline", retmode="text")
+        raw = handle.read()
+        title = re.search(r'TI  - (.*)', raw)
+        title = title.group(1) if title else f"PubMed {pmid}"
+        abstract = re.search(r'AB  - (.*)', raw, re.DOTALL)
+        ab_clean = abstract.group(1)[:600]+"..." if abstract else "..."
+        
+        db.session.add(Reference(title=title, authors="Via PubMed", year=datetime.now().strftime('%Y'), status='to_read', pdf_filename="", abstract=ab_clean, project_id="thesis"))
+        db.session.commit()
+        return redirect(url_for('library'))
+    except: return "Erro Import"
 
 @app.route('/read_ref/<int:id>')
 def read_ref(id):
     ref = Reference.query.get(id)
     content = ""
-    # Se tem PDF, lê o PDF
     if ref.pdf_filename:
-        try:
-            path = os.path.join(app.config['UPLOAD_FOLDER'], ref.pdf_filename)
-            content = " ".join([p.extract_text() for p in PdfReader(path).pages])
-        except: content = "Erro ao ler PDF."
-    # Se não tem PDF (veio do RIS/NBIB), usa o Abstract
-    else:
-        content = ref.abstract if ref.abstract else "Resumo não disponível."
-        
+        try: content = " ".join([p.extract_text() for p in PdfReader(os.path.join(app.config['UPLOAD_FOLDER'], ref.pdf_filename)).pages])
+        except: content = "Erro PDF"
+    else: content = ref.abstract if ref.abstract else "..."
     sid = str(uuid.uuid4())[:8]
-    db.session.add(Story(id=sid, title="Ref: "+ref.title))
-    
-    # Prepara Karaokê
+    db.session.add(Story(id=sid, title="Ref: "+ref.title[:20]))
     clean = re.sub(r'\s+', ' ', content)
     for s in re.split(r'(?<=[.!?])\s+', clean)[:150]:
-        if len(s) > 5: db.session.add(Sentence(en=s, pt="...", story_id=sid))
-        
+        if len(s)>5: db.session.add(Sentence(en=s, pt="...", story_id=sid))
     db.session.commit()
     return redirect(url_for('ler', id=sid))
 
-# --- OUTRAS ROTAS (MANTIDAS) ---
-
+# --- ROTAS PADRÃO ---
 @app.route('/novo', methods=['GET', 'POST'])
 def novo():
     if request.method == 'POST':
@@ -154,59 +140,11 @@ def novo():
 @app.route('/ler/<id>')
 def ler(id): return render_template('layout.html', mode='read', story=Story.query.get(id), app_name=APP_NAME)
 
-@app.route('/pronunciation')
-def pronunciation():
-    cards = Card.query.order_by(db.func.random()).limit(10).all()
-    words = [{"w": c.front, "ipa": c.ipa} for c in cards]
-    if not words: words = [{"w":"Science", "ipa":"/ˈsaɪ.əns/"}]
-    return render_template('layout.html', mode='pronunciation', words_json=json.dumps(words), app_name=APP_NAME)
-
 @app.route('/search', methods=['GET', 'POST'])
 def search():
-    results = []
-    if request.method == 'POST':
-        results = utils.search_pubmed(request.form.get('query'))
-    return render_template('layout.html', mode='search', results=results, app_name=APP_NAME)
-
-@app.route('/checker', methods=['GET', 'POST'])
-def checker():
-    orig, corr = "", ""
-    if request.method == 'POST':
-        orig = request.form.get('text_input')
-        corr = utils.improve_english_text(orig)
-    return render_template('layout.html', mode='checker', original=orig, corrected=corr, app_name=APP_NAME)
-
-@app.route('/miner', methods=['GET', 'POST'])
-def miner():
-    k = []
-    if request.method == 'POST':
-        txt = request.form.get('text_input', '')
-        f = request.files.get('file_input')
-        if f: 
-            try: txt += " ".join([p.extract_text() for p in PdfReader(f).pages])
-            except: pass
-        k = utils.get_top_keywords(txt)
-    return render_template('layout.html', mode='miner', keywords=k, app_name=APP_NAME)
-
-@app.route('/summarizer', methods=['GET', 'POST'])
-def summarizer():
-    if request.method == 'POST':
-        txt = request.form.get('text_input', '')
-        f = request.files.get('file_input')
-        if f: 
-            try: txt = " ".join([p.extract_text() for p in PdfReader(f).pages])
-            except: pass
-        sid = str(uuid.uuid4())[:8]
-        db.session.add(Story(id=sid, title="Resumo: "+txt[:20]))
-        clean = re.sub(r'<[^>]*>', '', utils.format_abstract_smart(txt))
-        for s in re.split(r'(?<=[.!?])\s+', clean)[:50]:
-            if len(s)>5: db.session.add(Sentence(en=s, pt="...", story_id=sid))
-        db.session.commit()
-        return redirect(url_for('ler', id=sid))
-    return render_template('layout.html', mode='summarizer', app_name=APP_NAME)
-
-@app.route('/writer')
-def writer(): return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
+    res = []
+    if request.method == 'POST': res = utils.search_pubmed(request.form.get('query'))
+    return render_template('layout.html', mode='search', results=res, app_name=APP_NAME)
 
 @app.route('/get_citation/<int:id>')
 def get_citation(id):
@@ -234,6 +172,50 @@ def add_vocab():
 def tts():
     a = utils.get_audio_sync(request.form.get('text'), request.form.get('accent'))
     return send_file(a, mimetype='audio/mpeg') if a else ("Erro",500)
+
+@app.route('/pronunciation')
+def pronunciation():
+    c = Card.query.order_by(db.func.random()).limit(10).all()
+    w = [{"w": x.front, "ipa": x.ipa} for x in c] if c else [{"w":"Science", "ipa":"/ˈsaɪ.əns/"}]
+    return render_template('layout.html', mode='pronunciation', words_json=json.dumps(w), app_name=APP_NAME)
+
+@app.route('/writer')
+def writer(): return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
+
+@app.route('/checker', methods=['GET', 'POST'])
+def checker():
+    o, c = "", ""
+    if request.method == 'POST': o=request.form.get('text_input'); c=utils.improve_english_text(o)
+    return render_template('layout.html', mode='checker', original=o, corrected=c, app_name=APP_NAME)
+
+@app.route('/miner', methods=['GET', 'POST'])
+def miner():
+    k = []
+    if request.method == 'POST':
+        t = request.form.get('text_input', '')
+        f = request.files.get('file_input')
+        if f: 
+            try: t += " ".join([p.extract_text() for p in PdfReader(f).pages])
+            except: pass
+        k = utils.get_top_keywords(t)
+    return render_template('layout.html', mode='miner', keywords=k, app_name=APP_NAME)
+
+@app.route('/summarizer', methods=['GET', 'POST'])
+def summarizer():
+    if request.method == 'POST':
+        t = request.form.get('text_input', '')
+        f = request.files.get('file_input')
+        if f: 
+            try: t = " ".join([p.extract_text() for p in PdfReader(f).pages])
+            except: pass
+        sid = str(uuid.uuid4())[:8]
+        db.session.add(Story(id=sid, title="Resumo: "+t[:20]))
+        clean = re.sub(r'<[^>]*>', '', utils.format_abstract_smart(t))
+        for s in re.split(r'(?<=[.!?])\s+', clean)[:50]:
+            if len(s)>5: db.session.add(Sentence(en=s, pt="...", story_id=sid))
+        db.session.commit()
+        return redirect(url_for('ler', id=sid))
+    return render_template('layout.html', mode='summarizer', app_name=APP_NAME)
 
 @app.route('/delete_story/<id>')
 def delete_story(id): db.session.delete(Story.query.get(id)); db.session.commit(); return redirect(url_for('index'))

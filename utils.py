@@ -31,57 +31,81 @@ def parse_bib_file(content):
     """Lê texto RIS/NBIB e retorna lista de referências"""
     references = []
     current = {}
-    
-    # Normaliza quebras de linha
     lines = content.replace('\r\n', '\n').split('\n')
-    
     for line in lines:
         line = line.strip()
         if not line: continue
-        
-        # Detecta fim de registro (ER no RIS)
         if line.startswith("ER  -"):
             if current.get('title'): references.append(current)
             current = {}
             continue
-            
-        # Título (TI, T1)
-        if line.startswith("TI  - ") or line.startswith("T1  - "):
-            current['title'] = line[6:]
-            
-        # Autor (AU, A1, FAU) - Pega o primeiro
-        elif (line.startswith("AU  - ") or line.startswith("A1  - ") or line.startswith("FAU - ")) and 'authors' not in current:
-            current['authors'] = line[6:]
-            
-        # Ano (PY, Y1, DP)
-        elif (line.startswith("PY  - ") or line.startswith("Y1  - ") or line.startswith("DP  - ")):
-            # Tenta extrair 4 digitos
+        if line.startswith("TI  - ") or line.startswith("T1  - "): current['title'] = line[6:]
+        elif (line.startswith("AU  - ") or line.startswith("A1  - ")) and 'authors' not in current: current['authors'] = line[6:]
+        elif (line.startswith("PY  - ") or line.startswith("DP  - ")):
             match = re.search(r'\d{4}', line)
             if match: current['year'] = match.group(0)
-            
-        # Resumo (AB, N2)
-        elif line.startswith("AB  - ") or line.startswith("N2  - "):
-            current['abstract'] = line[6:]
+        elif line.startswith("AB  - ") or line.startswith("N2  - "): current['abstract'] = line[6:]
 
-    # Adiciona o último se não tiver fechado
     if current.get('title'): references.append(current)
     return references
 
-# --- CITAÇÕES ---
+# --- CITAÇÕES (8 FORMATOS) ---
 def generate_citation_formats(ref):
     if not ref: return {}
     aut = ref.authors if ref.authors else "AUTOR"
     title = ref.title if ref.title else "Título"
     year = ref.year if ref.year else "s.d."
+    
     return {
         "abnt": f"{aut.upper()}. <b>{title}</b>. {year}.",
         "apa": f"{aut}. ({year}). <i>{title}</i>.",
         "vancouver": f"{aut}. {title}. {year}.",
         "ama": f"{aut}. {title}. {year}.",
-        "ieee": f"[1] {aut}, \"{title},\" {year}."
+        "nlm": f"{aut}. {title}. {year}.",
+        "harvard": f"{aut} ({year}) '{title}'.",
+        "ieee": f"[1] {aut}, \"{title},\" {year}.",
+        "chicago": f"{aut}. \"{title}.\" {year}."
     }
 
-# --- AUXILIARES (TTS, FORMAT) ---
+# --- PUBMED API ---
+def search_pubmed(query):
+    """Busca rica com link e PMID"""
+    if not query: return []
+    try:
+        handle = Entrez.esearch(db="pubmed", term=query, retmax=10, sort="relevance")
+        id_list = Entrez.read(handle)['IdList']
+        handle.close()
+        if not id_list: return []
+        
+        handle = Entrez.efetch(db="pubmed", id=id_list, rettype="medline", retmode="text")
+        raw_data = handle.read()
+        handle.close()
+        
+        articles = []
+        curr = {}
+        for line in raw_data.strip().split('\n'):
+            key = line[:4].strip()
+            val = line[6:].strip()
+            if key == 'TI': curr['title'] = val
+            elif key == '' and 'title' in curr and 'abstract' not in curr: curr['title'] += " " + val
+            elif key == 'AB': curr['abstract'] = val
+            elif key == '' and 'abstract' in curr: curr['abstract'] += " " + val
+            elif key == 'TA': curr['journal'] = val
+            elif key == 'PMID':
+                if 'title' in curr:
+                    curr['url'] = f"https://pubmed.ncbi.nlm.nih.gov/{curr['pmid']}/"
+                    articles.append(curr)
+                curr = {'pmid': val, 'title': '...', 'abstract': '...', 'journal': 'PubMed'}
+        
+        if 'title' in curr:
+             curr['url'] = f"https://pubmed.ncbi.nlm.nih.gov/{curr['pmid']}/"
+             articles.append(curr)
+        return articles
+    except Exception as e:
+        print(e)
+        return []
+
+# --- AUXILIARES ---
 async def generate_neural_audio(text, voice):
     communicate = edge_tts.Communicate(text, voice)
     audio_data = BytesIO()
@@ -107,24 +131,13 @@ def format_abstract_smart(text):
 
 def improve_english_text(text):
     fixed = text
-    for s, a in ACADEMIC_REPLACEMENTS.items():
-        fixed = re.sub(rf"\b{s}\b", f"<b>{a}</b>", fixed, flags=re.IGNORECASE)
+    for s, a in ACADEMIC_REPLACEMENTS.items(): fixed = re.sub(rf"\b{s}\b", f"<b>{a}</b>", fixed, flags=re.IGNORECASE)
     return fixed
 
 def get_top_keywords(text):
     words = re.findall(r'\b[a-zA-Z]{5,}\b', text.lower())
     stop = {"which", "about", "their", "these", "other", "after", "where", "study", "using", "results", "group"}
     return Counter([w for w in words if w not in stop]).most_common(20)
-
-def search_pubmed(query):
-    try:
-        handle = Entrez.esearch(db="pubmed", term=query, retmax=5)
-        ids = Entrez.read(handle)['IdList']
-        if not ids: return []
-        handle = Entrez.efetch(db="pubmed", id=ids, rettype="medline", retmode="text")
-        raw = handle.read()
-        return parse_bib_file(raw) # Reusa o parser criado acima!
-    except: return []
 
 def get_phonetic(text):
     if not text: return ""
