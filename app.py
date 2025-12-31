@@ -58,14 +58,29 @@ def index():
     stats = {"vocab": Card.query.count(), "refs": Reference.query.count(), "stories": Story.query.count()}
     return render_template('layout.html', mode='dashboard', stats=stats, app_name=APP_NAME)
 
+# --- BUSCA COM FILTROS E PAGINAÇÃO ---
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     results = []
+    # Dados da Busca
     query = request.form.get('query') or request.args.get('query', '')
+    
+    # Filtros (checkboxes)
+    f_abstract = request.form.get('f_abstract') or request.args.get('f_abstract')
+    f_free = request.form.get('f_free') or request.args.get('f_free')
+    
+    active_filters = []
+    if f_abstract: active_filters.append('"has abstract"[Filter]')
+    if f_free: active_filters.append('"free full text"[Filter]')
+    
+    # Paginação
     try: start = int(request.args.get('start', 0))
     except: start = 0
-    if query: results = utils.search_pubmed(query, start=start)
-    return render_template('layout.html', mode='search', results=results, query=query, start=start, app_name=APP_NAME)
+    
+    if query:
+        results = utils.search_pubmed(query, start=start, filters=active_filters)
+        
+    return render_template('layout.html', mode='search', results=results, query=query, start=start, f_abstract=f_abstract, f_free=f_free, app_name=APP_NAME)
 
 @app.route('/import_pubmed/<pmid>')
 def import_pubmed(pmid):

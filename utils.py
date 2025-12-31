@@ -57,16 +57,25 @@ def generate_citation_formats(ref):
         "chicago": f"{aut}. \"{title}.\" {year}."
     }
 
-def search_pubmed(query, start=0):
+# --- BUSCA PUBMED COM FILTROS ---
+def search_pubmed(query, start=0, filters=None):
     if not query: return []
+    
+    # Adiciona filtros à query
+    final_query = query
+    if filters:
+        final_query += " AND " + " AND ".join(filters)
+
     try:
-        handle = Entrez.esearch(db="pubmed", term=query, retmax=10, retstart=start, sort="relevance")
+        handle = Entrez.esearch(db="pubmed", term=final_query, retmax=10, retstart=start, sort="relevance")
         id_list = Entrez.read(handle)['IdList']
         handle.close()
         if not id_list: return []
+        
         handle = Entrez.efetch(db="pubmed", id=id_list, rettype="medline", retmode="text")
         raw_data = handle.read()
         handle.close()
+        
         articles = []
         curr = {}
         for line in raw_data.strip().split('\n'):

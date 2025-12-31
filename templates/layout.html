@@ -4,48 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#0984e3">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>{{ app_name }}</title>
-
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
-
 <style>
 :root { --p: #0984e3; --s: #2d3436; --bg: #f5f6fa; --card: #fff; --h: #ffeaa7; --w: #6c5ce7; --t: #00b894; --ipa: #e84393; }
 body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--s); margin: 0; padding-bottom: 100px; }
 .header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; align-items: center; }
 .container { padding: 20px; max-width: 800px; margin: 0 auto; }
-
-/* Sidebar Responsiva */
 .sidebar { height: 100%; width: 0; position: fixed; top: 0; left: 0; background: var(--card); overflow-x: hidden; transition: 0.3s; padding-top: 60px; z-index: 200; box-shadow: 2px 0 100px rgba(0,0,0,0.2); }
 .sidebar a { padding: 12px 25px; text-decoration: none; font-size: 0.95rem; color: var(--s); display: block; border-bottom: 1px solid #eee; }
 .sidebar-head { font-size: 0.75rem; font-weight: bold; color: #999; padding: 15px 25px 5px; margin-top: 15px; border-bottom: 2px solid #eee; text-transform: uppercase; }
-
-/* Componentes */
 .card { background: var(--card); padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
 .btn { background: var(--p); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
 .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 .ipa-tag { color: var(--p); font-family: 'Courier New', monospace; font-size: 0.9rem; margin-left: 5px; background: #eef2f3; padding: 2px 5px; border-radius: 4px; }
-
-/* Leitura */
 .sentence-block { padding: 15px; margin-bottom: 10px; cursor: pointer; line-height: 1.8; border-radius: 8px; transition: 0.1s; }
 .sentence-active { background: #e1f5fe; border-left: 5px solid var(--p); }
 .word-span:hover { background: #fdcb6e; border-radius: 3px; }
 .word-active { background: var(--h) !important; color: black; box-shadow: 0 0 8px var(--h); border-radius: 3px; font-weight: bold; }
-
-/* Modais */
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center; }
 .modal-content { background: var(--card); padding: 25px; border-radius: 10px; width: 90%; max-width: 600px; text-align: center; }
 .mic-btn { width: 70px; height: 70px; border-radius: 50%; background: var(--p); color: white; font-size: 1.8rem; border: none; display: block; margin: 15px auto; cursor: pointer; }
 .mic-active { background: #e74c3c; animation: pulse 1s infinite; }
 .fab { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; background: var(--p); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1400; cursor: pointer; }
 textarea, input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
-
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231,76,60,0.7); } 100% { box-shadow: 0 0 0 15px rgba(231,76,60,0); } }
-
-/* Desktop Mode */
 @media (min-width: 992px) {
     .sidebar { width: 280px !important; }
     .header, .container { margin-left: 280px; }
@@ -58,7 +42,6 @@ let curAud=null, currentSpans=[], karaokeTimeout=null, rate=1.0;
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleModal(id){const m=document.getElementById(id); m.style.display=(m.style.display=='flex')?'none':'flex';}
-
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
     if(karaokeTimeout) clearTimeout(karaokeTimeout);
@@ -142,7 +125,6 @@ function copyText(el) {
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2em;padding-right:20px;">&times;</a>
     <a href="/">🏠 Home (Início)</a>
-    
     <div class="sidebar-head">STUDY & TOOLS (ESTUDO)</div>
     <a href="/novo">✨ New Text (Novo Texto)</a>
     <a href="/pronunciation">🎤 Pronunciation (Pronúncia)</a>
@@ -151,7 +133,6 @@ function copyText(el) {
     <a href="/checker">📝 Grammar Checker (Corretor)</a>
     <a href="/miner">⛏️ Data Miner (Minerador)</a>
     <a href="/summarizer">⚡ Summarizer (Resumidor)</a>
-    
     <div class="sidebar-head">RESEARCH (PESQUISA)</div>
     <a href="/library">📚 Reference Manager (Gestor)</a>
     <a href="/writer">✍️ Writer (Redator)</a>
@@ -194,9 +175,15 @@ function copyText(el) {
 {% elif mode == 'search' %}
 <div class="container">
     <h3>PubMed Search (Busca)</h3>
-    <form action="/search" method="POST" style="display:flex; gap:5px;">
-        <input type="text" name="query" value="{{query}}" placeholder="Ex: diabetes..." required>
-        <button class="btn">🔍</button>
+    <form action="/search" method="POST">
+        <div style="display:flex; gap:5px;">
+            <input type="text" name="query" value="{{query}}" placeholder="Ex: diabetes..." required>
+            <button class="btn">🔍</button>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:15px; font-size:0.9rem; color:#555;">
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="f_abstract" value="1" {% if f_abstract %}checked{% endif %}> Has Abstract (Com Resumo)</label>
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="f_free" value="1" {% if f_free %}checked{% endif %}> Free Full Text (Grátis)</label>
+        </div>
     </form>
     
     <div style="margin-top:20px;">
@@ -221,10 +208,10 @@ function copyText(el) {
     {% if results or start > 0 %}
     <div style="display:flex; justify-content:center; gap:10px; margin-top:20px;">
         {% if start > 0 %}
-        <a href="/search?query={{query}}&start={{start - 10}}" class="btn" style="background:#b2bec3;">⬅ Previous (Anterior)</a>
+        <a href="/search?query={{query}}&start={{start - 10}}&f_abstract={{f_abstract}}&f_free={{f_free}}" class="btn" style="background:#b2bec3;">⬅ Previous (Anterior)</a>
         {% endif %}
         {% if results|length == 10 %}
-        <a href="/search?query={{query}}&start={{start + 10}}" class="btn">Next (Próxima) ➡</a>
+        <a href="/search?query={{query}}&start={{start + 10}}&f_abstract={{f_abstract}}&f_free={{f_free}}" class="btn">Next (Próxima) ➡</a>
         {% endif %}
     </div>
     {% endif %}
@@ -260,6 +247,6 @@ function copyText(el) {
 <div class="fab" onclick="window.location.href='/novo'">+</div>
 <div id="dictModal" class="modal"><div class="modal-content"><h2 id="dictWord">...</h2><p id="dictIPA" style="color:var(--p);">...</p><p id="dictTrans">...</p><div style="display:flex; gap:10px; justify-content:center;"><button class="btn" onclick="playDict()">🔊</button><button class="btn" onclick="saveCard()" style="background:#27ae60;">SAVE (SALVAR)</button></div><button class="btn" style="background:#777; margin-top:10px;" onclick="toggleModal('dictModal')">Close</button><input type="hidden" id="saveF"></div></div>
 
-<div id="citeModal" class="modal"><div class="modal-content" style="max-width:650px; text-align:left;"><h3 style="border-bottom:1px solid #eee;">Generate Citation (Gerar Referência)</h3><div style="max-height:60vh; overflow-y:auto;"><div style="margin-bottom:15px;"><label>🇧🇷 ABNT</label><div id="citABNT" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚕️ VANCOUVER</label><div id="citVAN" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🇺🇸 AMA</label><div id="citAMA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🧠 APA</label><div id="citAPA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🎓 HARVARD</label><div id="citHAR" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚙️ IEEE</label><div id="citIEEE" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>📖 CHICAGO</label><div id="citCHI" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div></div><button class="btn" style="background:#777; width:100%;" onclick="toggleModal('citeModal')">Close</button></div></div>
+<div id="citeModal" class="modal"><div class="modal-content" style="max-width:650px; text-align:left;"><h3 style="border-bottom:1px solid #eee;">Generate Citation (Gerar Referência)</h3><div style="max-height:60vh; overflow-y:auto;"><div style="margin-bottom:15px;"><label>🇧🇷 ABNT</label><div id="citABNT" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚕️ VANCOUVER</label><div id="citVAN" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🇺🇸 AMA</label><div id="citAMA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🧠 APA</label><div id="citAPA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🎓 HARVARD</label><div id="citHAR" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚙️ IEEE</label><div id="citIEEE" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>📖 CHICAGO</label><div id="citCHI" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div></div><button class="btn" style="background:#777; width:100%;" onclick="toggleModal('citeModal')">Close (Fechar)</button></div></div>
 <div class="player"><button id="playBtn" class="btn" style="border-radius:50%; width:50px; position:fixed; bottom:20px; left:20px;" onclick="toggleModal('dictModal')">🔊</button></div>
 </body></html>
