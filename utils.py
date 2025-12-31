@@ -36,18 +36,16 @@ def parse_bib_file(content):
             match = re.search(r'\d{4}', line)
             if match: current['year'] = match.group(0)
         elif line.startswith("AB  - ") or line.startswith("N2  - "): current['abstract'] = line[6:]
-        elif line.startswith("UR  - ") or line.startswith("L1  - "): current['url'] = line[6:] # Captura URL do RIS
+        elif line.startswith("UR  - ") or line.startswith("L1  - "): current['url'] = line[6:]
     if current.get('title'): references.append(current)
     return references
 
-# --- GERADOR DE CITAÇÕES (8 MODELOS) ---
 def generate_citation_formats(ref):
     if not ref: return {}
     aut = ref.authors if ref.authors else "AUTOR"
     title = ref.title if ref.title else "Título"
     year = ref.year if ref.year else "s.d."
     url = f" Disponível em: <{ref.url}>." if ref.url else ""
-    
     return {
         "abnt": f"{aut.upper()}. <b>{title}</b>. {year}.{url}",
         "apa": f"{aut}. ({year}). <i>{title}</i>.",
@@ -66,11 +64,9 @@ def search_pubmed(query, start=0):
         id_list = Entrez.read(handle)['IdList']
         handle.close()
         if not id_list: return []
-        
         handle = Entrez.efetch(db="pubmed", id=id_list, rettype="medline", retmode="text")
         raw_data = handle.read()
         handle.close()
-        
         articles = []
         curr = {}
         for line in raw_data.strip().split('\n'):

@@ -51,7 +51,7 @@ class Reference(db.Model):
     status = db.Column(db.String(20))
     pdf_filename = db.Column(db.String(200))
     abstract = db.Column(db.Text)
-    url = db.Column(db.String(500)) # Novo campo para o Link
+    url = db.Column(db.String(500))
     project_id = db.Column(db.String(50), db.ForeignKey('project.id'))
 
 class Draft(db.Model):

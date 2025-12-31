@@ -34,24 +34,17 @@ def fix_db():
         try:
             db.create_all()
             inspector = inspect(db.engine)
-            
-            # Checa tabela Card
             if inspector.has_table('card'):
                 cols = [c['name'] for c in inspector.get_columns('card')]
                 with db.engine.connect() as conn:
                     if 'ease_factor' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN ease_factor FLOAT DEFAULT 2.5")); conn.commit()
                     if 'context' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN context TEXT")); conn.commit()
                     if 'ipa' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN ipa VARCHAR(200)")); conn.commit()
-            
-            # Checa tabela Reference (Adiciona URL)
             if inspector.has_table('reference'):
                 cols = [c['name'] for c in inspector.get_columns('reference')]
                 with db.engine.connect() as conn:
-                    if 'url' not in cols: 
-                        conn.execute(text("ALTER TABLE reference ADD COLUMN url VARCHAR(500)"))
-                        conn.commit()
-                        
-        except Exception as e: print(e)
+                    if 'url' not in cols: conn.execute(text("ALTER TABLE reference ADD COLUMN url VARCHAR(500)")); conn.commit()
+        except: pass
 fix_db()
 
 @app.route('/')
@@ -83,7 +76,6 @@ def import_pubmed(pmid):
         abstract = re.search(r'AB  - (.*)', raw, re.DOTALL)
         ab_clean = abstract.group(1)[:600]+"..." if abstract else "..."
         url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
-        
         db.session.add(Reference(title=title, authors="Via PubMed", year=datetime.now().strftime('%Y'), status='to_read', pdf_filename="", abstract=ab_clean, url=url, project_id="thesis"))
         db.session.commit()
         return redirect(url_for('library'))
@@ -97,7 +89,6 @@ def library():
             if not f or not f.filename: continue
             filename = secure_filename(f.filename)
             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-            
             if ext == 'pdf':
                 f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 title = filename
@@ -106,7 +97,6 @@ def library():
                     if r.metadata and r.metadata.title: title = r.metadata.title
                 except: pass
                 db.session.add(Reference(title=title, authors="Ver PDF", year="2024", status='to_read', pdf_filename=filename, project_id="thesis"))
-
             elif ext in ['ris', 'nbib', 'txt']:
                 parsed = utils.parse_bib_file(f.read().decode('utf-8', errors='ignore'))
                 for r in parsed:
@@ -136,7 +126,6 @@ def get_citation(id):
     r = Reference.query.get(id)
     return jsonify(utils.generate_citation_formats(r)) if r else jsonify({"error": "404"})
 
-# --- OUTRAS ROTAS ---
 @app.route('/novo', methods=['GET', 'POST'])
 def novo():
     if request.method == 'POST':
