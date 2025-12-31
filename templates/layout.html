@@ -8,33 +8,77 @@
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+
 <style>
 :root { --p: #0984e3; --s: #2d3436; --bg: #f5f6fa; --card: #fff; --h: #ffeaa7; --w: #6c5ce7; --t: #00b894; --ipa: #e84393; }
 body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--s); margin: 0; padding-bottom: 100px; }
 .header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; align-items: center; }
-.container { padding: 20px; max-width: 800px; margin: 0 auto; }
+.container { padding: 20px; max-width: 1200px; margin: 0 auto; } /* Largura aumentada para o Writer */
+
+/* Sidebar */
 .sidebar { height: 100%; width: 0; position: fixed; top: 0; left: 0; background: var(--card); overflow-x: hidden; transition: 0.3s; padding-top: 60px; z-index: 200; box-shadow: 2px 0 100px rgba(0,0,0,0.2); }
 .sidebar a { padding: 12px 25px; text-decoration: none; font-size: 0.95rem; color: var(--s); display: block; border-bottom: 1px solid #eee; }
 .sidebar-head { font-size: 0.75rem; font-weight: bold; color: #999; padding: 15px 25px 5px; margin-top: 15px; border-bottom: 2px solid #eee; text-transform: uppercase; }
+
+/* Componentes Gerais */
 .card { background: var(--card); padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
 .btn { background: var(--p); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
 .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 .ipa-tag { color: var(--p); font-family: 'Courier New', monospace; font-size: 0.9rem; margin-left: 5px; background: #eef2f3; padding: 2px 5px; border-radius: 4px; }
+
+/* --- ESTILOS DO WRITER (NOVO) --- */
+.writer-layout { display: grid; grid-template-columns: 1fr; gap: 20px; height: 80vh; }
+.paper-container { display: flex; flex-direction: column; height: 100%; }
+.paper { 
+    flex: 1; 
+    width: 100%; 
+    padding: 40px; 
+    border: 1px solid #ddd; 
+    border-radius: 5px; 
+    font-family: 'Georgia', serif; 
+    line-height: 1.8; 
+    font-size: 1.1rem; 
+    resize: none; 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    outline: none;
+}
+.phrasebank { 
+    background: white; 
+    border-left: 1px solid #eee; 
+    padding: 15px; 
+    overflow-y: auto; 
+    border-radius: 10px; 
+    max-height: 80vh;
+}
+.phrase-category { font-weight: bold; margin-top: 15px; color: var(--p); border-bottom: 1px solid #eee; padding-bottom: 5px; }
+.phrase-item { 
+    padding: 8px; 
+    border-bottom: 1px solid #f0f0f0; 
+    cursor: pointer; 
+    font-size: 0.9rem; 
+    transition: 0.2s;
+}
+.phrase-item:hover { background: #e1f5fe; color: var(--p); }
+.phrase-pt { display: block; font-size: 0.8rem; color: #777; margin-top: 2px; }
+
+/* Leitura e Modais */
 .sentence-block { padding: 15px; margin-bottom: 10px; cursor: pointer; line-height: 1.8; border-radius: 8px; transition: 0.1s; }
 .sentence-active { background: #e1f5fe; border-left: 5px solid var(--p); }
 .word-span:hover { background: #fdcb6e; border-radius: 3px; }
 .word-active { background: var(--h) !important; color: black; box-shadow: 0 0 8px var(--h); border-radius: 3px; font-weight: bold; }
 .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center; }
 .modal-content { background: var(--card); padding: 25px; border-radius: 10px; width: 90%; max-width: 600px; text-align: center; }
-.mic-btn { width: 70px; height: 70px; border-radius: 50%; background: var(--p); color: white; font-size: 1.8rem; border: none; display: block; margin: 15px auto; cursor: pointer; }
-.mic-active { background: #e74c3c; animation: pulse 1s infinite; }
 .fab { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; background: var(--p); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1400; cursor: pointer; }
 textarea, input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+
+/* Desktop Mode */
 @media (min-width: 992px) {
     .sidebar { width: 280px !important; }
     .header, .container { margin-left: 280px; }
     .header span { display: none; }
     .fab { right: 40px; }
+    /* No PC, o Writer fica lado a lado */
+    .writer-layout { grid-template-columns: 2fr 1fr; }
 }
 </style>
 <script>
@@ -42,6 +86,21 @@ let curAud=null, currentSpans=[], karaokeTimeout=null, rate=1.0;
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleModal(id){const m=document.getElementById(id); m.style.display=(m.style.display=='flex')?'none':'flex';}
+
+// --- FUNÇÕES DO WRITER ---
+function insertPhrase(text) {
+    const area = document.getElementById('thesisPaper');
+    const start = area.selectionStart;
+    const end = area.selectionEnd;
+    
+    // Insere o texto onde o cursor está
+    area.value = area.value.substring(0, start) + text + area.value.substring(end);
+    
+    // Coloca o cursor no final do texto inserido e foca
+    area.selectionStart = area.selectionEnd = start + text.length;
+    area.focus();
+}
+
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
     if(karaokeTimeout) clearTimeout(karaokeTimeout);
@@ -125,6 +184,7 @@ function copyText(el) {
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2em;padding-right:20px;">&times;</a>
     <a href="/">🏠 Home (Início)</a>
+    
     <div class="sidebar-head">STUDY & TOOLS (ESTUDO)</div>
     <a href="/novo">✨ New Text (Novo Texto)</a>
     <a href="/pronunciation">🎤 Pronunciation (Pronúncia)</a>
@@ -133,6 +193,7 @@ function copyText(el) {
     <a href="/checker">📝 Grammar Checker (Corretor)</a>
     <a href="/miner">⛏️ Data Miner (Minerador)</a>
     <a href="/summarizer">⚡ Summarizer (Resumidor)</a>
+    
     <div class="sidebar-head">RESEARCH (PESQUISA)</div>
     <a href="/library">📚 Reference Manager (Gestor)</a>
     <a href="/writer">✍️ Writer (Redator)</a>
@@ -140,7 +201,36 @@ function copyText(el) {
 
 <div class="header"><span onclick="openNav()" style="font-size:1.5em;cursor:pointer;">☰</span><h3>{{ app_name }}</h3></div>
 
-{% if mode == 'dashboard' %}
+{% if mode == 'writer' %}
+<div class="container" style="max-width:100%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3>Thesis Writer (Redator Acadêmico)</h3>
+        <button class="btn btn-sm" onclick="alert('Funcionalidade de Exportação em Breve!')">💾 Export .DOCX</button>
+    </div>
+    
+    <div class="writer-layout">
+        <div class="paper-container">
+            <textarea id="thesisPaper" class="paper" placeholder="Start writing your thesis here... (Comece a escrever sua tese aqui...)"></textarea>
+        </div>
+
+        <div class="phrasebank">
+            <h4 style="margin-top:0; border-bottom:2px solid var(--p); padding-bottom:10px;">Academic Phrasebank (Banco de Frases)</h4>
+            <p style="font-size:0.8rem; color:#777;">Click to insert (Clique para inserir)</p>
+            
+            {% for category, phrases in connectors.items() %}
+                <div class="phrase-category">{{ category }}</div>
+                {% for p in phrases %}
+                    <div class="phrase-item" onclick="insertPhrase('{{ p.en }} ')">
+                        {{ p.en }}
+                        <span class="phrase-pt">{{ p.pt }}</span>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% elif mode == 'dashboard' %}
 <div class="container">
     <h3>Dashboard (Painel)</h3>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
@@ -148,6 +238,7 @@ function copyText(el) {
         <div class="card" onclick="window.location.href='/library'" style="border-left:5px solid var(--w); cursor:pointer;"><b>📚 References (Referências)</b><br><small>Manager (Gestor)</small></div>
         <div class="card" onclick="window.location.href='/search'" style="border-left:5px solid var(--t); cursor:pointer;"><b>🔍 PubMed (Busca)</b><br><small>Search Articles</small></div>
         <div class="card" onclick="window.location.href='/vocab_list'" style="border-left:5px solid var(--h); cursor:pointer;"><b>🗂️ Vocab (Vocabulário)</b><br><small>Review ({{stats.vocab}})</small></div>
+        <div class="card" onclick="window.location.href='/writer'" style="border-left:5px solid #e17055; cursor:pointer;"><b>✍️ Writer (Redator)</b><br><small>Escreva sua Tese</small></div>
     </div>
 </div>
 
@@ -216,9 +307,6 @@ function copyText(el) {
     </div>
     {% endif %}
 </div>
-
-{% elif mode == 'writer' %}
-<div class="container"><h3>Writer (Redator)</h3><textarea style="width:100%; height:400px; padding:15px; font-family:Georgia; line-height:1.6;"></textarea></div>
 
 {% elif mode == 'vocab_list' %}
 <div class="container"><h3>My Flashcards (Vocabulário)</h3>{% for c in cards %}<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
