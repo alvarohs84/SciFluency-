@@ -17,10 +17,20 @@ from models import db, Deck, Card, Story, Sentence, StudyLog, Reference, Project
 import utils
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///scifluency.db')
-if app.config['SQLALCHEMY_DATABASE_URI'] and app.config['SQLALCHEMY_DATABASE_URI'].startswith("postgres://"):
-    app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace("postgres://", "postgresql://", 1)
+
+# --- CONFIGURAÇÃO DO BANCO DE DADOS (CORREÇÃO SSL/DRIVER) ---
+# Pega a URL do banco de dados (do Render ou Local)
+db_url = os.environ.get('DATABASE_URL', 'sqlite:///scifluency.db')
+
+# Ajusta o prefixo para usar o driver moderno (Psycopg 3) se for PostgreSQL
+if db_url and db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif db_url and db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# ------------------------------------------------------------
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -30,39 +40,47 @@ db.init_app(app)
 APP_NAME = "SciFluency Ultimate"
 
 def fix_db():
+    """Cria tabelas e ajusta colunas novas automaticamente"""
     with app.app_context():
         try:
             db.create_all()
             inspector = inspect(db.engine)
+            
+            # Ajustes na tabela Card
             if inspector.has_table('card'):
                 cols = [c['name'] for c in inspector.get_columns('card')]
                 with db.engine.connect() as conn:
                     if 'ease_factor' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN ease_factor FLOAT DEFAULT 2.5")); conn.commit()
                     if 'context' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN context TEXT")); conn.commit()
                     if 'ipa' not in cols: conn.execute(text("ALTER TABLE card ADD COLUMN ipa VARCHAR(200)")); conn.commit()
+            
+            # Ajustes na tabela Reference
             if inspector.has_table('reference'):
                 cols = [c['name'] for c in inspector.get_columns('reference')]
                 with db.engine.connect() as conn:
                     if 'url' not in cols: conn.execute(text("ALTER TABLE reference ADD COLUMN url VARCHAR(500)")); conn.commit()
-        except: pass
+        except Exception as e:
+            print(f"DB Fix Info: {e}")
 fix_db()
 
 @app.route('/')
 def index():
+    # Garante que existem dados iniciais
     if not Project.query.first():
         try: db.session.add(Project(id="thesis", title="Meu Projeto", target_journal="Definir")); db.session.commit()
         except: db.session.rollback()
     if not Deck.query.get("my_vocab"):
         try: db.session.add(Deck(id="my_vocab", name="Vocabulário", icon="🎓")); db.session.commit()
         except: pass
+    
     stats = {"vocab": Card.query.count(), "refs": Reference.query.count(), "stories": Story.query.count()}
     return render_template('layout.html', mode='dashboard', stats=stats, app_name=APP_NAME)
 
-# --- BUSCA COM FILTROS E PAGINAÇÃO ---
+# --- BUSCA PUBMED COM FILTROS E PAGINAÇÃO ---
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     results = []
-    # Dados da Busca
+    # Pega query do form (POST) ou da URL (GET)
     query = request.form.get('query') or request.args.get('query', '')
     
     # Filtros (checkboxes)
@@ -82,20 +100,38 @@ def search():
         
     return render_template('layout.html', mode='search', results=results, query=query, start=start, f_abstract=f_abstract, f_free=f_free, app_name=APP_NAME)
 
+# --- IMPORTAÇÃO DO PUBMED ---
 @app.route('/import_pubmed/<pmid>')
 def import_pubmed(pmid):
     try:
         handle = Entrez.efetch(db="pubmed", id=pmid, rettype="medline", retmode="text")
         raw = handle.read()
-        title = re.search(r'TI  - (.*)', raw).group(1) if re.search(r'TI  - (.*)', raw) else f"PubMed {pmid}"
-        abstract = re.search(r'AB  - (.*)', raw, re.DOTALL)
-        ab_clean = abstract.group(1)[:600]+"..." if abstract else "..."
+        
+        # Extração de dados
+        title_match = re.search(r'TI  - (.*)', raw)
+        title = title_match.group(1) if title_match else f"PubMed {pmid}"
+        
+        abstract_match = re.search(r'AB  - (.*)', raw, re.DOTALL)
+        ab_clean = abstract_match.group(1)[:600]+"..." if abstract_match else "..."
+        
         url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
-        db.session.add(Reference(title=title, authors="Via PubMed", year=datetime.now().strftime('%Y'), status='to_read', pdf_filename="", abstract=ab_clean, url=url, project_id="thesis"))
+        
+        # Salva no banco
+        db.session.add(Reference(
+            title=title, 
+            authors="Via PubMed", 
+            year=datetime.now().strftime('%Y'), 
+            status='to_read', 
+            pdf_filename="", 
+            abstract=ab_clean, 
+            url=url, 
+            project_id="thesis"
+        ))
         db.session.commit()
         return redirect(url_for('library'))
-    except: return "Erro Import"
+    except: return "Erro ao importar do PubMed"
 
+# --- GESTOR DE REFERÊNCIAS ---
 @app.route('/library', methods=['GET', 'POST'])
 def library():
     if request.method == 'POST':
@@ -104,6 +140,7 @@ def library():
             if not f or not f.filename: continue
             filename = secure_filename(f.filename)
             ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+            
             if ext == 'pdf':
                 f.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 title = filename
@@ -112,10 +149,20 @@ def library():
                     if r.metadata and r.metadata.title: title = r.metadata.title
                 except: pass
                 db.session.add(Reference(title=title, authors="Ver PDF", year="2024", status='to_read', pdf_filename=filename, project_id="thesis"))
+
             elif ext in ['ris', 'nbib', 'txt']:
                 parsed = utils.parse_bib_file(f.read().decode('utf-8', errors='ignore'))
                 for r in parsed:
-                    db.session.add(Reference(title=r.get('title','Sem Título'), authors=r.get('authors','Desconhecido'), year=r.get('year','s.d.'), abstract=r.get('abstract',''), url=r.get('url',''), status='to_read', pdf_filename="", project_id="thesis"))
+                    db.session.add(Reference(
+                        title=r.get('title','Sem Título'), 
+                        authors=r.get('authors','Desconhecido'), 
+                        year=r.get('year','s.d.'), 
+                        abstract=r.get('abstract',''), 
+                        url=r.get('url',''), 
+                        status='to_read', 
+                        pdf_filename="", 
+                        project_id="thesis"
+                    ))
         db.session.commit()
         return redirect(url_for('library'))
     return render_template('layout.html', mode='library', references=Reference.query.order_by(Reference.id.desc()).all(), app_name=APP_NAME)
@@ -128,8 +175,11 @@ def read_ref(id):
         try: content = " ".join([p.extract_text() for p in PdfReader(os.path.join(app.config['UPLOAD_FOLDER'], ref.pdf_filename)).pages])
         except: content = "Erro PDF"
     else: content = ref.abstract if ref.abstract else "..."
+    
     sid = str(uuid.uuid4())[:8]
     db.session.add(Story(id=sid, title="Ref: "+ref.title[:20]))
+    
+    # Prepara texto para leitura
     clean = re.sub(r'\s+', ' ', content)
     for s in re.split(r'(?<=[.!?])\s+', clean)[:150]:
         if len(s)>5: db.session.add(Sentence(en=s, pt="...", story_id=sid))
@@ -141,6 +191,14 @@ def get_citation(id):
     r = Reference.query.get(id)
     return jsonify(utils.generate_citation_formats(r)) if r else jsonify({"error": "404"})
 
+# --- WRITER INTEGRADO ---
+@app.route('/writer')
+def writer():
+    # Carrega referências para a aba lateral do Writer
+    refs = Reference.query.order_by(Reference.year.desc()).all()
+    return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, references=refs, app_name=APP_NAME)
+
+# --- OUTRAS FERRAMENTAS ---
 @app.route('/novo', methods=['GET', 'POST'])
 def novo():
     if request.method == 'POST':
@@ -193,16 +251,12 @@ def pronunciation():
     w = [{"w": x.front, "ipa": x.ipa} for x in c] if c else [{"w":"Science", "ipa":"/ˈsaɪ.əns/"}]
     return render_template('layout.html', mode='pronunciation', words_json=json.dumps(w), app_name=APP_NAME)
 
-@app.route('/writer')
-def writer():
-    # Agora carregamos as referências e ordenamos por ano (mais recente)
-    refs = Reference.query.order_by(Reference.year.desc()).all()
-    return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, references=refs, app_name=APP_NAME)
 @app.route('/checker', methods=['GET', 'POST'])
 def checker():
     o, c = "", ""
     if request.method == 'POST': o=request.form.get('text_input'); c=utils.improve_english_text(o)
     return render_template('layout.html', mode='checker', original=o, corrected=c, app_name=APP_NAME)
+
 @app.route('/miner', methods=['GET', 'POST'])
 def miner():
     k = []
@@ -213,6 +267,7 @@ def miner():
             except: pass
         k = utils.get_top_keywords(t)
     return render_template('layout.html', mode='miner', keywords=k, app_name=APP_NAME)
+
 @app.route('/summarizer', methods=['GET', 'POST'])
 def summarizer():
     if request.method == 'POST':
@@ -228,8 +283,10 @@ def summarizer():
         db.session.commit()
         return redirect(url_for('ler', id=sid))
     return render_template('layout.html', mode='summarizer', app_name=APP_NAME)
+
 @app.route('/delete_story/<id>')
 def delete_story(id): db.session.delete(Story.query.get(id)); db.session.commit(); return redirect(url_for('index'))
+
 @app.route('/delete_ref/<int:id>')
 def delete_ref(id): db.session.delete(Reference.query.get(id)); db.session.commit(); return redirect(url_for('library'))
 

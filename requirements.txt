@@ -1,12 +1,11 @@
 Flask
 Flask-SQLAlchemy
 SQLAlchemy
-deep-translator
+gunicorn
 pypdf
-gTTS
+deep-translator
 edge-tts
 biopython
 eng-to-ipa
-gunicorn
-psycopg2-binary
+psycopg[binary]
 
