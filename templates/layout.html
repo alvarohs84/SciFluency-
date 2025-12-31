@@ -13,55 +13,43 @@
 :root { --p: #0984e3; --s: #2d3436; --bg: #f5f6fa; --card: #fff; --h: #ffeaa7; --w: #6c5ce7; --t: #00b894; --ipa: #e84393; }
 body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--s); margin: 0; padding-bottom: 100px; }
 .header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; align-items: center; }
-.container { padding: 20px; max-width: 1200px; margin: 0 auto; } /* Largura aumentada para o Writer */
+.container { padding: 20px; max-width: 1200px; margin: 0 auto; }
 
 /* Sidebar */
 .sidebar { height: 100%; width: 0; position: fixed; top: 0; left: 0; background: var(--card); overflow-x: hidden; transition: 0.3s; padding-top: 60px; z-index: 200; box-shadow: 2px 0 100px rgba(0,0,0,0.2); }
 .sidebar a { padding: 12px 25px; text-decoration: none; font-size: 0.95rem; color: var(--s); display: block; border-bottom: 1px solid #eee; }
 .sidebar-head { font-size: 0.75rem; font-weight: bold; color: #999; padding: 15px 25px 5px; margin-top: 15px; border-bottom: 2px solid #eee; text-transform: uppercase; }
 
-/* Componentes Gerais */
+/* Componentes */
 .card { background: var(--card); padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
 .btn { background: var(--p); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
 .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 .ipa-tag { color: var(--p); font-family: 'Courier New', monospace; font-size: 0.9rem; margin-left: 5px; background: #eef2f3; padding: 2px 5px; border-radius: 4px; }
 
-/* --- ESTILOS DO WRITER (NOVO) --- */
+/* WRITER LAYOUT & TABS */
 .writer-layout { display: grid; grid-template-columns: 1fr; gap: 20px; height: 80vh; }
 .paper-container { display: flex; flex-direction: column; height: 100%; }
-.paper { 
-    flex: 1; 
-    width: 100%; 
-    padding: 40px; 
-    border: 1px solid #ddd; 
-    border-radius: 5px; 
-    font-family: 'Georgia', serif; 
-    line-height: 1.8; 
-    font-size: 1.1rem; 
-    resize: none; 
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    outline: none;
-}
-.phrasebank { 
-    background: white; 
-    border-left: 1px solid #eee; 
-    padding: 15px; 
-    overflow-y: auto; 
-    border-radius: 10px; 
-    max-height: 80vh;
-}
+.paper { flex: 1; width: 100%; padding: 40px; border: 1px solid #ddd; border-radius: 5px; font-family: 'Georgia', serif; line-height: 1.8; font-size: 1.1rem; resize: none; box-shadow: 0 5px 15px rgba(0,0,0,0.05); outline: none; }
+.sidebar-tools { background: white; border-left: 1px solid #eee; display: flex; flex-direction: column; border-radius: 10px; max-height: 80vh; overflow: hidden; }
+
+/* Tabs do Writer */
+.tabs { display: flex; border-bottom: 1px solid #eee; background: #f8f9fa; }
+.tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-weight: bold; color: #777; font-size: 0.9rem; }
+.tab.active { background: white; color: var(--p); border-bottom: 3px solid var(--p); }
+.tab-content { padding: 15px; overflow-y: auto; flex: 1; display: none; }
+.tab-content.active { display: block; }
+
+/* Itens da Lista */
 .phrase-category { font-weight: bold; margin-top: 15px; color: var(--p); border-bottom: 1px solid #eee; padding-bottom: 5px; }
-.phrase-item { 
-    padding: 8px; 
-    border-bottom: 1px solid #f0f0f0; 
-    cursor: pointer; 
-    font-size: 0.9rem; 
-    transition: 0.2s;
-}
+.phrase-item { padding: 8px; border-bottom: 1px solid #f0f0f0; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
 .phrase-item:hover { background: #e1f5fe; color: var(--p); }
 .phrase-pt { display: block; font-size: 0.8rem; color: #777; margin-top: 2px; }
 
-/* Leitura e Modais */
+.ref-item { background: #fdfdfd; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 6px; }
+.ref-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; display: block; }
+.ref-meta { font-size: 0.8rem; color: #666; display: block; margin-bottom: 8px; }
+
+/* Leitura */
 .sentence-block { padding: 15px; margin-bottom: 10px; cursor: pointer; line-height: 1.8; border-radius: 8px; transition: 0.1s; }
 .sentence-active { background: #e1f5fe; border-left: 5px solid var(--p); }
 .word-span:hover { background: #fdcb6e; border-radius: 3px; }
@@ -70,37 +58,53 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 .modal-content { background: var(--card); padding: 25px; border-radius: 10px; width: 90%; max-width: 600px; text-align: center; }
 .fab { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; background: var(--p); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 1400; cursor: pointer; }
 textarea, input { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+.mic-btn { width: 70px; height: 70px; border-radius: 50%; background: var(--p); color: white; font-size: 1.8rem; border: none; display: block; margin: 15px auto; cursor: pointer; }
+.mic-active { background: #e74c3c; animation: pulse 1s infinite; }
 
-/* Desktop Mode */
 @media (min-width: 992px) {
     .sidebar { width: 280px !important; }
     .header, .container { margin-left: 280px; }
     .header span { display: none; }
     .fab { right: 40px; }
-    /* No PC, o Writer fica lado a lado */
     .writer-layout { grid-template-columns: 2fr 1fr; }
 }
 </style>
 <script>
+// --- FUNÇÕES GERAIS ---
 let curAud=null, currentSpans=[], karaokeTimeout=null, rate=1.0;
 function openNav(){document.getElementById("side").style.width="280px";}
 function closeNav(){document.getElementById("side").style.width="0";}
 function toggleModal(id){const m=document.getElementById(id); m.style.display=(m.style.display=='flex')?'none':'flex';}
 
-// --- FUNÇÕES DO WRITER ---
-function insertPhrase(text) {
+// --- FUNÇÕES DO WRITER (ABAS E INSERÇÃO) ---
+function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    document.getElementById('tab-' + tabName).classList.add('active');
+    document.getElementById('content-' + tabName).classList.add('active');
+}
+
+function insertText(text) {
     const area = document.getElementById('thesisPaper');
     const start = area.selectionStart;
     const end = area.selectionEnd;
-    
-    // Insere o texto onde o cursor está
     area.value = area.value.substring(0, start) + text + area.value.substring(end);
-    
-    // Coloca o cursor no final do texto inserido e foca
     area.selectionStart = area.selectionEnd = start + text.length;
     area.focus();
 }
 
+function filterRefs() {
+    const input = document.getElementById('refSearch');
+    const filter = input.value.toLowerCase();
+    const nodes = document.getElementsByClassName('ref-item');
+    for (let i = 0; i < nodes.length; i++) {
+        let txt = nodes[i].textContent || nodes[i].innerText;
+        nodes[i].style.display = txt.toLowerCase().indexOf(filter) > -1 ? "" : "none";
+    }
+}
+
+// --- OUTRAS FUNÇÕES (LEITURA, TTS, MINER) ---
 async function speak(text){ 
     if(curAud) { curAud.pause(); curAud = null; } 
     if(karaokeTimeout) clearTimeout(karaokeTimeout);
@@ -184,7 +188,6 @@ function copyText(el) {
 <div id="side" class="sidebar">
     <a href="javascript:void(0)" onclick="closeNav()" style="text-align:right;font-size:2em;padding-right:20px;">&times;</a>
     <a href="/">🏠 Home (Início)</a>
-    
     <div class="sidebar-head">STUDY & TOOLS (ESTUDO)</div>
     <a href="/novo">✨ New Text (Novo Texto)</a>
     <a href="/pronunciation">🎤 Pronunciation (Pronúncia)</a>
@@ -193,7 +196,6 @@ function copyText(el) {
     <a href="/checker">📝 Grammar Checker (Corretor)</a>
     <a href="/miner">⛏️ Data Miner (Minerador)</a>
     <a href="/summarizer">⚡ Summarizer (Resumidor)</a>
-    
     <div class="sidebar-head">RESEARCH (PESQUISA)</div>
     <a href="/library">📚 Reference Manager (Gestor)</a>
     <a href="/writer">✍️ Writer (Redator)</a>
@@ -210,22 +212,49 @@ function copyText(el) {
     
     <div class="writer-layout">
         <div class="paper-container">
-            <textarea id="thesisPaper" class="paper" placeholder="Start writing your thesis here... (Comece a escrever sua tese aqui...)"></textarea>
+            <textarea id="thesisPaper" class="paper" placeholder="Start writing your thesis here..."></textarea>
         </div>
 
-        <div class="phrasebank">
-            <h4 style="margin-top:0; border-bottom:2px solid var(--p); padding-bottom:10px;">Academic Phrasebank (Banco de Frases)</h4>
-            <p style="font-size:0.8rem; color:#777;">Click to insert (Clique para inserir)</p>
-            
-            {% for category, phrases in connectors.items() %}
-                <div class="phrase-category">{{ category }}</div>
-                {% for p in phrases %}
-                    <div class="phrase-item" onclick="insertPhrase('{{ p.en }} ')">
-                        {{ p.en }}
-                        <span class="phrase-pt">{{ p.pt }}</span>
-                    </div>
+        <div class="sidebar-tools">
+            <div class="tabs">
+                <div id="tab-phrase" class="tab active" onclick="switchTab('phrase')">Phrases</div>
+                <div id="tab-refs" class="tab" onclick="switchTab('refs')">My Library</div>
+            </div>
+
+            <div id="content-phrase" class="tab-content active">
+                <p style="font-size:0.8rem; color:#777; margin:0;">Click to insert sentence:</p>
+                {% for category, phrases in connectors.items() %}
+                    <div class="phrase-category">{{ category }}</div>
+                    {% for p in phrases %}
+                        <div class="phrase-item" onclick="insertText('{{ p.en }} ')">
+                            {{ p.en }} <span class="phrase-pt">{{ p.pt }}</span>
+                        </div>
+                    {% endfor %}
                 {% endfor %}
-            {% endfor %}
+            </div>
+
+            <div id="content-refs" class="tab-content">
+                <input type="text" id="refSearch" placeholder="Search references..." onkeyup="filterRefs()" style="margin-bottom:10px;">
+                
+                {% for r in references %}
+                <div class="ref-item">
+                    <span class="ref-title">{{ r.title }}</span>
+                    <span class="ref-meta">{{ r.authors.split(',')[0] }} et al. ({{ r.year }})</span>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn btn-sm" style="font-size:0.75rem; padding:3px 8px;" 
+                                onclick="insertText('({{ r.authors.split(',')[0] }} et al., {{ r.year }}) ')">
+                            + Cite
+                        </button>
+                        <button class="btn btn-sm" style="font-size:0.75rem; padding:3px 8px; background:#f39c12;" 
+                                onclick="insertText('\n\n{{ r.authors }}. {{ r.title }}. {{ r.year }}.')">
+                            + Full Ref
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                    <p style="color:#777; font-size:0.9rem;">No references found. Go to Library/Search to add some.</p>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
@@ -234,21 +263,21 @@ function copyText(el) {
 <div class="container">
     <h3>Dashboard (Painel)</h3>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div class="card" onclick="window.location.href='/novo'" style="border-left:5px solid var(--p); cursor:pointer;"><b>📖 Study (Estudar)</b><br><small>Text/PDF</small></div>
-        <div class="card" onclick="window.location.href='/library'" style="border-left:5px solid var(--w); cursor:pointer;"><b>📚 References (Referências)</b><br><small>Manager (Gestor)</small></div>
-        <div class="card" onclick="window.location.href='/search'" style="border-left:5px solid var(--t); cursor:pointer;"><b>🔍 PubMed (Busca)</b><br><small>Search Articles</small></div>
-        <div class="card" onclick="window.location.href='/vocab_list'" style="border-left:5px solid var(--h); cursor:pointer;"><b>🗂️ Vocab (Vocabulário)</b><br><small>Review ({{stats.vocab}})</small></div>
-        <div class="card" onclick="window.location.href='/writer'" style="border-left:5px solid #e17055; cursor:pointer;"><b>✍️ Writer (Redator)</b><br><small>Escreva sua Tese</small></div>
+        <div class="card" onclick="window.location.href='/novo'" style="border-left:5px solid var(--p); cursor:pointer;"><b>📖 Study</b><br><small>Text/PDF</small></div>
+        <div class="card" onclick="window.location.href='/library'" style="border-left:5px solid var(--w); cursor:pointer;"><b>📚 References</b><br><small>Manager</small></div>
+        <div class="card" onclick="window.location.href='/search'" style="border-left:5px solid var(--t); cursor:pointer;"><b>🔍 PubMed</b><br><small>Search</small></div>
+        <div class="card" onclick="window.location.href='/vocab_list'" style="border-left:5px solid var(--h); cursor:pointer;"><b>🗂️ Vocab</b><br><small>Review ({{stats.vocab}})</small></div>
+        <div class="card" onclick="window.location.href='/writer'" style="border-left:5px solid #e17055; cursor:pointer;"><b>✍️ Writer</b><br><small>Escreva sua Tese</small></div>
     </div>
 </div>
 
 {% elif mode == 'library' %}
-<div class="container"><h3>Reference Manager (Gestor de Referências)</h3>
+<div class="container"><h3>Reference Manager (Gestor)</h3>
 <div class="card" style="background:#e1f5fe; border:1px dashed var(--p);">
     <form action="/library" method="POST" enctype="multipart/form-data">
-        <label style="display:block; margin-bottom:5px;"><b>Add Files (Adicionar Arquivos)</b></label>
+        <label style="display:block; margin-bottom:5px;"><b>Add Files</b></label>
         <input type="file" name="ref_files" multiple accept=".pdf,.ris,.nbib,.txt">
-        <button class="btn" style="width:100%; margin-top:10px;">Upload Selected (Enviar)</button>
+        <button class="btn" style="width:100%; margin-top:10px;">Upload Selected</button>
         <small style="color:#666;">Accepts: PDF, RIS, NBIB, TXT</small>
     </form>
 </div>
@@ -257,26 +286,25 @@ function copyText(el) {
     <b>{{r.title}}</b><br><small>{{r.authors}} ({{r.year}})</small>
     {% if r.url %}<br><a href="{{r.url}}" target="_blank" style="color:var(--p); font-size:0.9rem;">🔗 Original Link</a>{% endif %}
     <div style="margin-top:10px; display:flex; gap:5px;">
-        <a href="/read_ref/{{r.id}}" class="btn btn-sm">Study (Estudar)</a>
-        <button class="btn btn-sm" onclick="openCitation({{r.id}})" style="background:#f39c12;">❞ Cite (Citar)</button>
+        <a href="/read_ref/{{r.id}}" class="btn btn-sm">Study</a>
+        <button class="btn btn-sm" onclick="openCitation({{r.id}})" style="background:#f39c12;">❞ Cite</button>
         <a href="/delete_ref/{{r.id}}" class="btn btn-sm" style="background:#e74c3c;">X</a>
     </div>
 </div>{% endfor %}</div>
 
 {% elif mode == 'search' %}
 <div class="container">
-    <h3>PubMed Search (Busca)</h3>
+    <h3>PubMed Search</h3>
     <form action="/search" method="POST">
         <div style="display:flex; gap:5px;">
             <input type="text" name="query" value="{{query}}" placeholder="Ex: diabetes..." required>
             <button class="btn">🔍</button>
         </div>
         <div style="margin-top:10px; display:flex; gap:15px; font-size:0.9rem; color:#555;">
-            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="f_abstract" value="1" {% if f_abstract %}checked{% endif %}> Has Abstract (Com Resumo)</label>
-            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="f_free" value="1" {% if f_free %}checked{% endif %}> Free Full Text (Grátis)</label>
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="f_abstract" value="1" {% if f_abstract %}checked{% endif %}> Has Abstract</label>
+            <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" name="f_free" value="1" {% if f_free %}checked{% endif %}> Free Full Text</label>
         </div>
     </form>
-    
     <div style="margin-top:20px;">
         {% for r in results %}
         <div class="card">
@@ -287,54 +315,48 @@ function copyText(el) {
             <h4 style="margin:10px 0;">{{r.title}}</h4>
             <p style="font-size:0.9rem; color:#555; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">{{r.abstract}}</p>
             <div style="margin-top:15px; display:flex; gap:10px;">
-                <a href="{{r.url}}" target="_blank" class="btn btn-sm" style="background:#2d3436;">↗ View (Ver)</a>
-                <a href="/import_pubmed/{{r.pmid}}" class="btn btn-sm" style="background:var(--t);">+ Add to Manager (Salvar)</a>
+                <a href="{{r.url}}" target="_blank" class="btn btn-sm" style="background:#2d3436;">↗ View</a>
+                <a href="/import_pubmed/{{r.pmid}}" class="btn btn-sm" style="background:var(--t);">+ Add to Manager</a>
             </div>
         </div>
         {% else %}
-            {% if query %}<p style="text-align:center; margin-top:20px;">End of results (Fim).</p>{% endif %}
+            {% if query %}<p style="text-align:center; margin-top:20px;">No results found.</p>{% endif %}
         {% endfor %}
     </div>
-
     {% if results or start > 0 %}
     <div style="display:flex; justify-content:center; gap:10px; margin-top:20px;">
-        {% if start > 0 %}
-        <a href="/search?query={{query}}&start={{start - 10}}&f_abstract={{f_abstract}}&f_free={{f_free}}" class="btn" style="background:#b2bec3;">⬅ Previous (Anterior)</a>
-        {% endif %}
-        {% if results|length == 10 %}
-        <a href="/search?query={{query}}&start={{start + 10}}&f_abstract={{f_abstract}}&f_free={{f_free}}" class="btn">Next (Próxima) ➡</a>
-        {% endif %}
-    </div>
-    {% endif %}
+        {% if start > 0 %}<a href="/search?query={{query}}&start={{start - 10}}&f_abstract={{f_abstract}}&f_free={{f_free}}" class="btn" style="background:#b2bec3;">⬅ Previous</a>{% endif %}
+        {% if results|length == 10 %}<a href="/search?query={{query}}&start={{start + 10}}&f_abstract={{f_abstract}}&f_free={{f_free}}" class="btn">Next ➡</a>{% endif %}
+    </div>{% endif %}
 </div>
 
 {% elif mode == 'vocab_list' %}
-<div class="container"><h3>My Flashcards (Vocabulário)</h3>{% for c in cards %}<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+<div class="container"><h3>My Flashcards</h3>{% for c in cards %}<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
 <div onclick="speak('{{c.front}}')" style="cursor:pointer; flex:1;"><b style="font-size:1.1rem;">{{c.front}}</b><span class="ipa-tag">{{c.ipa}}</span><br><small style="color:#777;">({{c.back}})</small></div>
-<button class="btn btn-sm" onclick="speak('{{c.front}}')">🔊</button></div>{% else %}<p>No words (Vazio).</p>{% endfor %}</div>
+<button class="btn btn-sm" onclick="speak('{{c.front}}')">🔊</button></div>{% else %}<p>No words.</p>{% endfor %}</div>
 
 {% elif mode == 'new' %}
-<div class="container"><div class="card"><h3>Add Material (Novo Material)</h3><form action="/novo" method="POST" enctype="multipart/form-data"><textarea name="text_input" rows="5" placeholder="Paste text here... (Cole o texto)"></textarea><p>OR PDF (OU PDF):</p><input type="file" name="file_input"><button class="btn" style="width:100%">PROCESS & STUDY (PROCESSAR)</button></form></div></div>
+<div class="container"><div class="card"><h3>Add Material</h3><form action="/novo" method="POST" enctype="multipart/form-data"><textarea name="text_input" rows="5" placeholder="Paste text here..."></textarea><p>OR PDF:</p><input type="file" name="file_input"><button class="btn" style="width:100%">PROCESS & STUDY</button></form></div></div>
 
 {% elif mode == 'read' %}
 <div class="container"><h3>{{ story.title }}</h3>{% for s in story.sentences %}<div class="sentence-block" onclick="prepare(this)">{% for w in s.en.split() %}<span class="word-span" onclick="mineWord(event, '{{w|replace("'","")|replace(".","")}}')">{{w}}</span> {% endfor %}<br><small style="color:#7f8c8d">({{ s.pt }})</small></div>{% endfor %}</div>
 
 {% elif mode == 'pronunciation' %}
-<div class="container" style="text-align:center;"><script>const words={{ words_json | safe }};</script><div class="card" style="padding:40px;"><h1 id="pWord">Ready?</h1><p id="pIpa" style="color:var(--p); font-family:monospace; font-size:1.2rem;">...</p><button id="mic" class="mic-btn" onclick="startRec(document.getElementById('pWord').innerText)">🎤</button><h3 id="fb">Tap & Speak (Fale)</h3><button class="btn" onclick="let w=words[Math.floor(Math.random()*words.length)]; document.getElementById('pWord').innerText=w.w; document.getElementById('pIpa').innerText=w.ipa;">Next (Próxima)</button></div></div>
+<div class="container" style="text-align:center;"><script>const words={{ words_json | safe }};</script><div class="card" style="padding:40px;"><h1 id="pWord">Ready?</h1><p id="pIpa" style="color:var(--p); font-family:monospace; font-size:1.2rem;">...</p><button id="mic" class="mic-btn" onclick="startRec(document.getElementById('pWord').innerText)">🎤</button><h3 id="fb">Tap & Speak</h3><button class="btn" onclick="let w=words[Math.floor(Math.random()*words.length)]; document.getElementById('pWord').innerText=w.w; document.getElementById('pIpa').innerText=w.ipa;">Next</button></div></div>
 
 {% elif mode == 'checker' %}
-<div class="container"><h3>Grammar Checker (Corretor)</h3><form action="/checker" method="POST"><textarea name="text_input" rows="5">{{original}}</textarea><button class="btn">Fix (Corrigir)</button></form>{% if corrected %}<div class="card" style="background:#e1f5fe;">{{corrected|safe}}</div>{% endif %}</div>
+<div class="container"><h3>Grammar Checker</h3><form action="/checker" method="POST"><textarea name="text_input" rows="5">{{original}}</textarea><button class="btn">Fix</button></form>{% if corrected %}<div class="card" style="background:#e1f5fe;">{{corrected|safe}}</div>{% endif %}</div>
 
 {% elif mode == 'miner' %}
-<div class="container"><h3>Data Miner (Minerador)</h3><form action="/miner" method="POST" enctype="multipart/form-data"><textarea name="text_input" placeholder="Paste text... (Cole texto)"></textarea><input type="file" name="file_input"><button class="btn">Extract (Extrair)</button></form>{% for k,v in keywords %}<div class="card" style="padding:10px;"><b>{{k}}</b>: {{v}}x</div>{% endfor %}</div>
+<div class="container"><h3>Data Miner</h3><form action="/miner" method="POST" enctype="multipart/form-data"><textarea name="text_input" placeholder="Paste text..."></textarea><input type="file" name="file_input"><button class="btn">Extract</button></form>{% for k,v in keywords %}<div class="card" style="padding:10px;"><b>{{k}}</b>: {{v}}x</div>{% endfor %}</div>
 
 {% elif mode == 'summarizer' %}
-<div class="container"><h3>Summarizer (Resumidor)</h3><form action="/summarizer" method="POST" enctype="multipart/form-data"><textarea name="text_input" placeholder="Text... (Texto)"></textarea><input type="file" name="file_input"><button class="btn">Summarize (Resumir)</button></form></div>
+<div class="container"><h3>Summarizer</h3><form action="/summarizer" method="POST" enctype="multipart/form-data"><textarea name="text_input" placeholder="Text..."></textarea><input type="file" name="file_input"><button class="btn">Summarize</button></form></div>
 {% endif %}
 
 <div class="fab" onclick="window.location.href='/novo'">+</div>
-<div id="dictModal" class="modal"><div class="modal-content"><h2 id="dictWord">...</h2><p id="dictIPA" style="color:var(--p);">...</p><p id="dictTrans">...</p><div style="display:flex; gap:10px; justify-content:center;"><button class="btn" onclick="playDict()">🔊</button><button class="btn" onclick="saveCard()" style="background:#27ae60;">SAVE (SALVAR)</button></div><button class="btn" style="background:#777; margin-top:10px;" onclick="toggleModal('dictModal')">Close</button><input type="hidden" id="saveF"></div></div>
+<div id="dictModal" class="modal"><div class="modal-content"><h2 id="dictWord">...</h2><p id="dictIPA" style="color:var(--p);">...</p><p id="dictTrans">...</p><div style="display:flex; gap:10px; justify-content:center;"><button class="btn" onclick="playDict()">🔊</button><button class="btn" onclick="saveCard()" style="background:#27ae60;">SAVE</button></div><button class="btn" style="background:#777; margin-top:10px;" onclick="toggleModal('dictModal')">Close</button><input type="hidden" id="saveF"></div></div>
 
-<div id="citeModal" class="modal"><div class="modal-content" style="max-width:650px; text-align:left;"><h3 style="border-bottom:1px solid #eee;">Generate Citation (Gerar Referência)</h3><div style="max-height:60vh; overflow-y:auto;"><div style="margin-bottom:15px;"><label>🇧🇷 ABNT</label><div id="citABNT" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚕️ VANCOUVER</label><div id="citVAN" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🇺🇸 AMA</label><div id="citAMA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🧠 APA</label><div id="citAPA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🎓 HARVARD</label><div id="citHAR" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚙️ IEEE</label><div id="citIEEE" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>📖 CHICAGO</label><div id="citCHI" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div></div><button class="btn" style="background:#777; width:100%;" onclick="toggleModal('citeModal')">Close (Fechar)</button></div></div>
+<div id="citeModal" class="modal"><div class="modal-content" style="max-width:650px; text-align:left;"><h3 style="border-bottom:1px solid #eee;">Generate Citation</h3><div style="max-height:60vh; overflow-y:auto;"><div style="margin-bottom:15px;"><label>🇧🇷 ABNT</label><div id="citABNT" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚕️ VANCOUVER</label><div id="citVAN" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🇺🇸 AMA</label><div id="citAMA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🧠 APA</label><div id="citAPA" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>🎓 HARVARD</label><div id="citHAR" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>⚙️ IEEE</label><div id="citIEEE" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div><div style="margin-bottom:15px;"><label>📖 CHICAGO</label><div id="citCHI" onclick="copyText(this)" style="background:#f1f2f6; padding:10px; cursor:pointer;">...</div></div></div><button class="btn" style="background:#777; width:100%;" onclick="toggleModal('citeModal')">Close</button></div></div>
 <div class="player"><button id="playBtn" class="btn" style="border-radius:50%; width:50px; position:fixed; bottom:20px; left:20px;" onclick="toggleModal('dictModal')">🔊</button></div>
 </body></html>

@@ -194,7 +194,10 @@ def pronunciation():
     return render_template('layout.html', mode='pronunciation', words_json=json.dumps(w), app_name=APP_NAME)
 
 @app.route('/writer')
-def writer(): return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, app_name=APP_NAME)
+def writer():
+    # Agora carregamos as referências e ordenamos por ano (mais recente)
+    refs = Reference.query.order_by(Reference.year.desc()).all()
+    return render_template('layout.html', mode='writer', connectors=utils.ACADEMIC_PHRASEBANK, references=refs, app_name=APP_NAME)
 @app.route('/checker', methods=['GET', 'POST'])
 def checker():
     o, c = "", ""
